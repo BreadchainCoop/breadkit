@@ -1,137 +1,123 @@
 # Automation Module
 
 ## Overview
-The Automation Module provides decentralized, redundant automation for protocol operations through multiple automation providers. It ensures reliable execution of time-sensitive operations like yield distributions while preventing double-execution and maintaining cost efficiency.
+The Automation Module provides a simple, unified interface for automation providers (Chainlink, Gelato, etc.) to trigger protocol operations. It eliminates the need for on-chain provider management while ensuring secure and controlled execution.
 
 ## Architecture
 
-### Core Components
+### Single Contract Design
+The `AutomationModule.sol` contract provides:
+- Compatible endpoints for multiple automation providers
+- Authorization control for callers
+- Timing controls to prevent excessive executions
+- Emergency manual execution capability
 
-1. **AutomationManager** (`AutomationManager.sol`)
-   - Central coordinator for all automation providers
-   - Manages provider registration and prioritization
-   - Handles execution routing and emergency controls
-   - Integrates with CycleManager and DistributionModule
+### Key Features
 
-2. **ExecutionCoordinator** (`ExecutionCoordinator.sol`)
-   - Prevents double-execution through locking mechanism
-   - Tracks execution history and status
-   - Manages execution conflicts between providers
+1. **Provider Compatibility**
+   - Chainlink: `checkUpkeep()` and `performUpkeep()`
+   - Gelato: `checker()` and `execute()`
+   - Generic: `executeAutomation()`
 
-3. **IAutomation Interface** (`interfaces/IAutomation.sol`)
-   - Standard interface for all automation providers
-   - Defines common methods for condition checking and execution
-   - Ensures provider compatibility
+2. **Security Controls**
+   - Authorized caller whitelist
+   - Minimum blocks between executions
+   - Owner-only emergency execution
+   - Enable/disable automation
 
-4. **ICycleManager Interface** (`interfaces/ICycleManager.sol`)
-   - Manages distribution cycles and timing
-   - Determines when distributions are ready
-   - Tracks cycle progression
-
-### Provider Implementations
-
-1. **ChainlinkAutomation** (`providers/ChainlinkAutomation.sol`)
-   - Chainlink Keeper compatible implementation
-   - Upkeep-based execution model
-   - Gas-efficient condition checking
-
-2. **GelatoAutomation** (`providers/GelatoAutomation.sol`)
-   - Gelato Network compatible implementation
-   - Task-based execution model
-   - Conditional execution logic
-
-## Key Features
-
-### Multi-Provider Redundancy
-- Support for multiple automation networks simultaneously
-- Automatic failover between providers
-- Priority-based provider selection
-
-### Execution Coordination
-- Mutex locking prevents double-execution
-- Execution history tracking
-- Provider performance monitoring
-
-### Gas Optimization
-- Efficient condition checking
-- Minimal on-chain computation
-- Batched operations where possible
+3. **Integration**
+   - Works with `ICycleManager` for timing
+   - Triggers `IDistributionModule` for yield distribution
+   - No on-chain provider coordination needed
 
 ## Usage
 
 ### Deployment
 ```solidity
-// Deploy AutomationManager
-AutomationManager manager = new AutomationManager();
-manager.initialize(owner);
+// Deploy AutomationModule
+AutomationModule automation = new AutomationModule();
+automation.initialize(owner);
 
-// Deploy providers
-ChainlinkAutomation chainlink = new ChainlinkAutomation();
-chainlink.initialize(owner, distributionModule, manager);
+// Configure modules
+automation.setCycleManager(cycleManager);
+automation.setDistributionModule(distributionModule);
 
-GelatoAutomation gelato = new GelatoAutomation();
-gelato.initialize(owner, distributionModule, manager, gelatoExecutor);
-
-// Register providers
-manager.registerProvider(address(chainlink), "Chainlink", 1);
-manager.registerProvider(address(gelato), "Gelato", 2);
-
-// Set modules
-manager.setCycleManager(cycleManager);
-manager.setDistributionModule(distributionModule);
+// Authorize automation providers
+automation.setCallerAuthorization(chainlinkKeeper, true);
+automation.setCallerAuthorization(gelatoExecutor, true);
 ```
 
-### Provider Registration
+### Chainlink Integration
 ```solidity
-// Register new provider
-manager.registerProvider(providerAddress, "ProviderName", priority);
+// Chainlink Keeper checks if execution is needed
+(bool upkeepNeeded, bytes memory performData) = automation.checkUpkeep("");
 
-// Set primary provider
-manager.setPrimaryProvider(providerAddress);
+// If needed, Chainlink calls performUpkeep
+if (upkeepNeeded) {
+    automation.performUpkeep(performData);
+}
+```
 
-// Toggle provider status
-manager.setProviderStatus(providerAddress, false); // Disable
+### Gelato Integration
+```solidity
+// Gelato checks if execution is needed
+(bool canExec, bytes memory execPayload) = automation.checker();
+
+// If needed, Gelato calls execute
+if (canExec) {
+    automation.execute(execPayload);
+}
+```
+
+### Configuration
+```solidity
+// Set minimum blocks between executions
+automation.setMinBlocksBetweenExecutions(100);
+
+// Enable/disable automation
+automation.setAutomationEnabled(false);
+
+// Manage authorized callers
+automation.setCallerAuthorization(address, true);
 ```
 
 ### Emergency Controls
 ```solidity
-// Manual execution if automation fails
-manager.emergencyExecute();
-
-// Disable specific provider
-manager.setProviderStatus(providerAddress, false);
+// Owner can always execute manually
+automation.emergencyExecute();
 ```
+
+## Benefits of Simplified Design
+
+1. **No On-chain Coordination**: Providers operate independently without needing to coordinate
+2. **Lower Gas Costs**: No provider registration or management overhead
+3. **Simpler Code**: Easier to audit and maintain
+4. **Flexible**: Any automation provider can integrate by calling the appropriate endpoint
+5. **Secure**: Authorization controls prevent unauthorized execution
 
 ## Testing
 
 Run the test suite:
 ```bash
-forge test --match-path test/automation/AutomationModuleSimple.t.sol
+forge test --match-path test/automation/AutomationModule.t.sol
 ```
 
 ## Security Considerations
 
-1. **Access Control**: Only registered providers can trigger executions
-2. **Reentrancy Protection**: All execution functions are protected
-3. **Execution Locking**: Prevents race conditions and double-spending
-4. **Emergency Controls**: Owner can manually execute if automation fails
+- Only authorized addresses can trigger automation
+- Minimum block intervals prevent excessive executions
+- Owner retains emergency control
+- Automation can be disabled if needed
+
+## Integration Requirements
+
+The module requires:
+- `ICycleManager`: To determine when distributions are ready
+- `IDistributionModule`: To execute the actual distribution
 
 ## Gas Optimization
 
-1. **Condition Checking**: Minimal computation in check functions
-2. **Early Returns**: Quick exit for failed conditions
-3. **Storage Optimization**: Efficient data structures for provider management
-
-## Integration Points
-
-- **CycleManager**: Determines distribution timing
-- **DistributionModule**: Executes actual yield distribution
-- **ExecutionCoordinator**: Manages execution conflicts
-
-## Future Enhancements
-
-1. Cross-chain automation support
-2. Additional provider integrations (Keep3r, etc.)
-3. Advanced scheduling capabilities
-4. Performance-based provider selection
-5. Automated provider rotation based on gas prices
+- Simple authorization check (mapping lookup)
+- Minimal state updates per execution
+- No complex provider management logic
+- Early revert conditions to save gas
