@@ -81,6 +81,7 @@ contract StrategyRecipientManager is Ownable {
         
         recipients[index].isActive = false;
         activeRecipientCount--;
+        delete recipientIndex[recipient];
         
         emit RecipientRemoved(recipient);
     }

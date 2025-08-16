@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
+import {console2} from "forge-std/console2.sol";
 import {DistributionStrategyModule} from "../src/modules/DistributionStrategyModule.sol";
 import {StrategyCalculator} from "../src/modules/StrategyCalculator.sol";
 import {StrategyRecipientManager} from "../src/modules/StrategyRecipientManager.sol";
 import {IDistributionStrategyModule} from "../src/interfaces/IDistributionStrategyModule.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@solady/contracts/auth/Ownable.sol";
 
 contract MockYieldToken is ERC20 {
     constructor() ERC20("Mock Yield", "MYIELD") {
@@ -244,7 +246,7 @@ contract DistributionStrategyModuleTest is Test {
         
         vm.stopPrank();
         
-        vm.expectRevert(DistributionStrategyModule.Unauthorized.selector);
+        vm.expectRevert(Ownable.Unauthorized.selector);
         strategyModule.distributeFixed(1000 ether);
     }
 

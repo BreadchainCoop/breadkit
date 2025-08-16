@@ -20,7 +20,6 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     error ZeroAddress();
     error ZeroFixedAmount();
     error NoStrategyRecipients();
-    error Unauthorized();
     error InsufficientStrategyYield();
 
     uint256 public constant PERCENTAGE_BASE = 10000; // 100% = 10000 basis points
@@ -33,7 +32,7 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     address public authorized;
 
     modifier onlyAuthorized() {
-        if (msg.sender != authorized && msg.sender != owner()) revert Unauthorized();
+        if (msg.sender != authorized && msg.sender != owner()) revert Ownable.Unauthorized();
         _;
     }
 

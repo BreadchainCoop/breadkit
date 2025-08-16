@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {console} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 import {TestWrapper} from "./TestWrapper.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {BreadKitFactory} from "../src/BreadKitFactory.sol";
