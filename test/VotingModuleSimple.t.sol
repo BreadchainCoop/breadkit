@@ -16,7 +16,7 @@ contract MockToken is IBreadKitToken {
     mapping(address => mapping(address => uint256)) private _allowances;
     mapping(address => address) private _delegates;
     mapping(address => uint256) private _votingPower;
-    
+
     uint256 private _totalSupply;
     string public name = "Mock Token";
     string public symbol = "MOCK";

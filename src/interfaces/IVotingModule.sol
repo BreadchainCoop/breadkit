@@ -90,7 +90,6 @@ interface IVotingModule {
         view
         returns (bool);
 
-
     /// @notice Returns the EIP-712 domain separator
     /// @dev Used for signature verification
     /// @return The domain separator hash
