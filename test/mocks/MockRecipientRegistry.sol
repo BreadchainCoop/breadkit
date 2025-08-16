@@ -92,10 +92,10 @@ contract MockRecipientRegistry is IRecipientRegistry {
         return recipient != address(0);
     }
 
+    // Internal function for getting recipient info (not part of interface)
     function getRecipientInfo(address recipient)
         external
         view
-        override
         returns (string memory name, string memory description, uint256 addedAt)
     {
         RecipientInfo memory info = recipientInfo[recipient];

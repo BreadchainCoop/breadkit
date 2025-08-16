@@ -12,14 +12,4 @@ interface IRecipientRegistry {
     /// @notice Gets the number of active recipients
     /// @return The count of active recipients
     function getActiveRecipientsCount() external view returns (uint256);
-
-    /// @notice Gets metadata for a specific recipient
-    /// @param recipient The recipient address
-    /// @return name The recipient's name
-    /// @return description The recipient's description
-    /// @return addedAt The block number when the recipient was added
-    function getRecipientInfo(address recipient)
-        external
-        view
-        returns (string memory name, string memory description, uint256 addedAt);
 }
