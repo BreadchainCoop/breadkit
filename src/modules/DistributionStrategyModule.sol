@@ -42,7 +42,7 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     constructor(address _yieldToken, uint256 _initialDivisor) {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_initialDivisor == 0) revert InvalidDivisor();
-        
+
         yieldToken = IERC20(_yieldToken);
         strategyDivisor = _initialDivisor;
         _initializeOwner(msg.sender);
@@ -56,16 +56,16 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function calculateDistribution(uint256 totalYield) 
-        external 
-        view 
-        returns (uint256 fixedAmount, uint256 votedAmount) 
+    function calculateDistribution(uint256 totalYield)
+        external
+        view
+        returns (uint256 fixedAmount, uint256 votedAmount)
     {
         if (totalYield == 0) return (0, 0);
-        
+
         fixedAmount = totalYield / strategyDivisor;
         votedAmount = totalYield - fixedAmount;
-        
+
         if (strategyRecipients.length > 0 && fixedAmount < strategyRecipients.length) {
             revert InsufficientStrategyYield();
         }
@@ -75,44 +75,41 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     function updateDistributionStrategy(uint256 newDivisor) external onlyOwner {
         if (newDivisor == 0) revert InvalidDivisor();
         if (newDivisor < MIN_STRATEGY_DIVISOR) revert DivisorTooSmall();
-        
+
         uint256 oldDivisor = strategyDivisor;
         strategyDivisor = newDivisor;
-        
+
         emit DistributionStrategyUpdated(oldDivisor, newDivisor);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function setStrategyRecipients(
-        address[] calldata recipients,
-        uint256[] calldata percentages
-    ) external onlyOwner {
+    function setStrategyRecipients(address[] calldata recipients, uint256[] calldata percentages) external onlyOwner {
         if (recipients.length != percentages.length) revert LengthMismatch();
         if (recipients.length == 0) revert EmptyRecipients();
-        
+
         uint256 totalPercentage = 0;
         for (uint256 i = 0; i < percentages.length; i++) {
             totalPercentage += percentages[i];
         }
         if (totalPercentage != PERCENTAGE_BASE) revert InvalidPercentageTotal();
-        
+
         delete strategyRecipients;
         delete strategyPercentages;
-        
+
         for (uint256 i = 0; i < recipients.length; i++) {
             if (recipients[i] == address(0)) revert ZeroAddress();
             strategyRecipients.push(recipients[i]);
             strategyPercentages.push(percentages[i]);
         }
-        
+
         emit StrategyRecipientsUpdated(recipients, percentages);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function getStrategyRecipients() 
-        external 
-        view 
-        returns (address[] memory recipients, uint256[] memory percentages) 
+    function getStrategyRecipients()
+        external
+        view
+        returns (address[] memory recipients, uint256[] memory percentages)
     {
         recipients = strategyRecipients;
         percentages = strategyPercentages;
@@ -128,39 +125,39 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     function distributeFixed(uint256 fixedAmount) external onlyAuthorized {
         if (fixedAmount == 0) revert ZeroFixedAmount();
         if (strategyRecipients.length == 0) revert NoStrategyRecipients();
-        
+
         uint256 totalDistributed = 0;
-        
+
         for (uint256 i = 0; i < strategyRecipients.length; i++) {
             uint256 recipientShare = (fixedAmount * strategyPercentages[i]) / PERCENTAGE_BASE;
-            
+
             if (recipientShare > 0) {
                 yieldToken.safeTransfer(strategyRecipients[i], recipientShare);
                 totalDistributed += recipientShare;
-                
+
                 emit StrategyDistribution(strategyRecipients[i], recipientShare);
             }
         }
-        
+
         emit StrategyDistributionComplete(fixedAmount, totalDistributed);
     }
 
     /// @inheritdoc IDistributionStrategyModule
     function validateStrategyConfiguration() external view returns (bool isValid) {
         if (strategyDivisor == 0) return false;
-        
+
         if (strategyRecipients.length > 0) {
             if (strategyRecipients.length != strategyPercentages.length) return false;
-            
+
             uint256 totalPercentage = 0;
             for (uint256 i = 0; i < strategyPercentages.length; i++) {
                 totalPercentage += strategyPercentages[i];
                 if (strategyRecipients[i] == address(0)) return false;
             }
-            
+
             if (totalPercentage != PERCENTAGE_BASE) return false;
         }
-        
+
         return true;
     }
 }

@@ -25,16 +25,16 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     uint256 public cycleLength;
     uint256 public yieldFixedSplitDivisor;
     uint256 public lastDistributionTime;
-    
+
     IDistributionStrategyModule public strategyModule;
     IVotingModule public votingModule;
     IAMMVotingPowerModule public ammVotingPower;
     IERC20 public yieldToken;
-    
+
     address[] public projects;
     mapping(address => bool) public isProject;
     mapping(address => uint256) public projectIndex;
-    
+
     uint256[] public currentDistribution;
     uint256 public totalVotes;
 
@@ -45,23 +45,18 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     event YieldFixedSplitDivisorUpdated(uint256 newDivisor);
     event AMMVotingPowerUpdated(address newAMMVotingPower);
 
-    constructor(
-        address _yieldToken,
-        address _strategyModule,
-        uint256 _cycleLength,
-        uint256 _yieldFixedSplitDivisor
-    ) {
+    constructor(address _yieldToken, address _strategyModule, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor) {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_strategyModule == address(0)) revert ZeroAddress();
         if (_cycleLength == 0) revert InvalidCycleLength();
         if (_yieldFixedSplitDivisor == 0) revert InvalidDivisor();
-        
+
         yieldToken = IERC20(_yieldToken);
         strategyModule = IDistributionStrategyModule(_strategyModule);
         cycleLength = _cycleLength;
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
         lastDistributionTime = block.timestamp;
-        
+
         _initializeOwner(msg.sender);
     }
 
@@ -71,23 +66,23 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
             revert DistributionNotReady();
         }
         if (projects.length == 0) revert NoProjectsConfigured();
-        
+
         uint256 totalYield = yieldToken.balanceOf(address(this));
         if (totalYield == 0) revert InsufficientYield();
-        
+
         (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateDistribution(totalYield);
-        
+
         if (fixedAmount > 0) {
             yieldToken.safeTransfer(address(strategyModule), fixedAmount);
             strategyModule.distributeFixed(fixedAmount);
         }
-        
+
         if (votedAmount > 0 && totalVotes > 0) {
             _distributeVotedPortion(votedAmount);
         }
-        
+
         lastDistributionTime = block.timestamp;
-        
+
         emit DistributionExecuted(totalYield, fixedAmount, votedAmount);
     }
 
@@ -95,18 +90,18 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     /// @param votedAmount Amount to distribute based on votes
     function _distributeVotedPortion(uint256 votedAmount) internal {
         uint256 distributed = 0;
-        
+
         for (uint256 i = 0; i < projects.length; i++) {
             if (currentDistribution[i] > 0) {
                 uint256 projectShare;
-                
+
                 if (i == projects.length - 1) {
                     projectShare = votedAmount - distributed;
                 } else {
                     projectShare = (votedAmount * currentDistribution[i]) / totalVotes;
                     distributed += projectShare;
                 }
-                
+
                 if (projectShare > 0) {
                     yieldToken.safeTransfer(projects[i], projectShare);
                 }
@@ -130,11 +125,11 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     function setYieldFixedSplitDivisor(uint256 _yieldFixedSplitDivisor) external override onlyOwner {
         if (_yieldFixedSplitDivisor == 0) revert InvalidDivisor();
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
-        
+
         if (address(strategyModule) != address(0)) {
             strategyModule.updateDistributionStrategy(_yieldFixedSplitDivisor);
         }
-        
+
         emit YieldFixedSplitDivisorUpdated(_yieldFixedSplitDivisor);
     }
 
@@ -165,12 +160,12 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     function addProject(address project) external onlyOwner {
         if (project == address(0)) revert ZeroAddress();
         if (isProject[project]) return;
-        
+
         projects.push(project);
         isProject[project] = true;
         projectIndex[project] = projects.length - 1;
         currentDistribution.push(0);
-        
+
         emit ProjectAdded(project);
     }
 
@@ -178,21 +173,21 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     /// @param project Address of the project to remove
     function removeProject(address project) external onlyOwner {
         if (!isProject[project]) return;
-        
+
         uint256 index = projectIndex[project];
         uint256 lastIndex = projects.length - 1;
-        
+
         if (index != lastIndex) {
             projects[index] = projects[lastIndex];
             projectIndex[projects[lastIndex]] = index;
             currentDistribution[index] = currentDistribution[lastIndex];
         }
-        
+
         projects.pop();
         currentDistribution.pop();
         delete isProject[project];
         delete projectIndex[project];
-        
+
         emit ProjectRemoved(project);
     }
 
@@ -200,13 +195,13 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     /// @param votes Array of vote counts for each project
     function updateDistribution(uint256[] calldata votes) external onlyOwner {
         require(votes.length == projects.length, "Invalid votes length");
-        
+
         uint256 newTotalVotes = 0;
         for (uint256 i = 0; i < votes.length; i++) {
             currentDistribution[i] = votes[i];
             newTotalVotes += votes[i];
         }
-        
+
         totalVotes = newTotalVotes;
     }
 

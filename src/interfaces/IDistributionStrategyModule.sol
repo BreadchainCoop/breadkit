@@ -29,7 +29,10 @@ interface IDistributionStrategyModule {
     /// @param totalYield Total yield to be distributed
     /// @return fixedAmount Amount allocated for fixed distribution
     /// @return votedAmount Amount allocated for voting-based distribution
-    function calculateDistribution(uint256 totalYield) external view returns (uint256 fixedAmount, uint256 votedAmount);
+    function calculateDistribution(uint256 totalYield)
+        external
+        view
+        returns (uint256 fixedAmount, uint256 votedAmount);
 
     /// @notice Updates the distribution strategy divisor
     /// @dev Divisor determines the split (e.g., divisor=2 means 50/50 split)
@@ -44,7 +47,10 @@ interface IDistributionStrategyModule {
     /// @notice Gets the current strategy recipients and their allocations
     /// @return recipients Array of recipient addresses
     /// @return percentages Array of percentage allocations
-    function getStrategyRecipients() external view returns (address[] memory recipients, uint256[] memory percentages);
+    function getStrategyRecipients()
+        external
+        view
+        returns (address[] memory recipients, uint256[] memory percentages);
 
     /// @notice Gets the amount allocated for strategy distribution
     /// @param totalYield Total yield available
