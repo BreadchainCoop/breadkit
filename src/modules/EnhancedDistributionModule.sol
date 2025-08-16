@@ -72,9 +72,8 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
 
         (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateDistribution(totalYield);
 
-        if (fixedAmount > 0) {
-            yieldToken.safeTransfer(address(strategyModule), fixedAmount);
-            strategyModule.distributeFixed(fixedAmount);
+        if (fixedAmount > 0 && projects.length > 0) {
+            _distributeFixedPortion(fixedAmount);
         }
 
         if (votedAmount > 0 && totalVotes > 0) {
@@ -84,6 +83,29 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         lastDistributionTime = block.timestamp;
 
         emit DistributionExecuted(totalYield, fixedAmount, votedAmount);
+    }
+
+    /// @dev Distributes the fixed portion equally among all projects
+    /// @param fixedAmount Amount to distribute equally
+    function _distributeFixedPortion(uint256 fixedAmount) internal {
+        uint256 amountPerProject = fixedAmount / projects.length;
+        uint256 distributed = 0;
+        
+        for (uint256 i = 0; i < projects.length; i++) {
+            uint256 projectShare;
+            
+            // Last project gets remainder to handle rounding
+            if (i == projects.length - 1) {
+                projectShare = fixedAmount - distributed;
+            } else {
+                projectShare = amountPerProject;
+                distributed += projectShare;
+            }
+            
+            if (projectShare > 0) {
+                yieldToken.safeTransfer(projects[i], projectShare);
+            }
+        }
     }
 
     /// @dev Distributes the voted portion based on current voting results
