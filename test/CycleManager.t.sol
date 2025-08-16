@@ -27,7 +27,7 @@ contract CycleManagerTest is Test {
 
     function testCycleCompletion() public {
         assertFalse(cycleManager.isCycleComplete());
-        
+
         // Move to end of cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH);
         assertTrue(cycleManager.isCycleComplete());
@@ -36,10 +36,10 @@ contract CycleManagerTest is Test {
     function testStartNewCycle() public {
         // Move to end of cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        
+
         uint256 currentBlock = block.number;
         cycleManager.startNewCycle();
-        
+
         assertEq(cycleManager.getCurrentCycle(), 2);
         assertEq(cycleManager.lastCycleStartBlock(), currentBlock);
         assertFalse(cycleManager.isCycleComplete());
@@ -48,14 +48,14 @@ contract CycleManagerTest is Test {
     function testCannotStartNewCycleEarly() public {
         // Try to start new cycle before current one is complete
         vm.roll(START_BLOCK + CYCLE_LENGTH - 1);
-        
+
         vm.expectRevert(AbstractCycleManager.InvalidCycleTransition.selector);
         cycleManager.startNewCycle();
     }
 
     function testUnauthorizedCannotStartCycle() public {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        
+
         vm.prank(user);
         vm.expectRevert(AbstractCycleManager.NotAuthorized.selector);
         cycleManager.startNewCycle();
@@ -63,23 +63,23 @@ contract CycleManagerTest is Test {
 
     function testAuthorization() public {
         assertFalse(cycleManager.authorized(user));
-        
+
         cycleManager.setAuthorization(user, true);
         assertTrue(cycleManager.authorized(user));
-        
+
         cycleManager.setAuthorization(user, false);
         assertFalse(cycleManager.authorized(user));
     }
 
     function testGetCycleInfo() public {
         CycleManager.CycleInfo memory info = cycleManager.getCycleInfo();
-        
+
         assertEq(info.cycleNumber, 1);
         assertEq(info.startBlock, START_BLOCK);
         assertEq(info.endBlock, START_BLOCK + CYCLE_LENGTH);
         assertEq(info.blocksRemaining, CYCLE_LENGTH);
         assertTrue(info.isActive);
-        
+
         // Move halfway through cycle
         vm.roll(START_BLOCK + 50);
         info = cycleManager.getCycleInfo();
@@ -136,12 +136,12 @@ contract CycleManagerTest is Test {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
         cycleManager.startNewCycle();
         assertEq(cycleManager.getCurrentCycle(), 2);
-        
+
         // Complete second cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
         cycleManager.startNewCycle();
         assertEq(cycleManager.getCurrentCycle(), 3);
-        
+
         // Verify cycle info
         CycleManager.CycleInfo memory info = cycleManager.getCycleInfo();
         assertEq(info.cycleNumber, 3);

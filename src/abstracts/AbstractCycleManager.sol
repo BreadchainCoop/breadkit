@@ -7,7 +7,6 @@ import "../interfaces/ICycleManager.sol";
 /// @notice Abstract contract providing core cycle management functionality with fixed cycle implementation
 /// @dev Merges cycle manager and module utilities into a single abstract contract
 abstract contract AbstractCycleManager is ICycleManager {
-
     /// @notice The length of each cycle in blocks
     uint256 public cycleLength;
 
@@ -68,7 +67,7 @@ abstract contract AbstractCycleManager is ICycleManager {
         cycleLength = _cycleLength;
         lastCycleStartBlock = _startBlock > 0 ? _startBlock : block.number;
         currentCycle = 1;
-        
+
         // Authorize the deployer
         authorized[msg.sender] = true;
         emit AuthorizationUpdated(msg.sender, true);
