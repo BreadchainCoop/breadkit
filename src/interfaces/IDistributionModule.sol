@@ -24,7 +24,7 @@ interface IDistributionModule {
         uint256[] votedDistributions,
         uint256[] fixedDistributions
     );
-    
+
     event TokensMintedForDistribution(uint256 amount);
     event EmergencyPause(address admin, uint256 timestamp);
     event EmergencyWithdraw(address token, address to, uint256 amount, address admin);

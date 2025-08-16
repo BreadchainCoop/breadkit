@@ -27,7 +27,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     address public emergencyAdmin;
     address public yieldToken;
-    
+
     uint256 public cycleLength;
     uint256 public yieldFixedSplitDivisor;
     uint256 public lastDistributionBlock;
@@ -50,11 +50,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param _yieldToken Address of the yield token
     /// @param _cycleLength Initial cycle length in blocks
     /// @param _yieldFixedSplitDivisor Initial fixed split divisor
-    function __DistributionManager_init(
-        address _yieldToken,
-        uint256 _cycleLength,
-        uint256 _yieldFixedSplitDivisor
-    ) internal {
+    function __DistributionManager_init(address _yieldToken, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor)
+        internal
+    {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_cycleLength == 0) revert InvalidCycleLength();
         if (_yieldFixedSplitDivisor == 0) revert InvalidDivisor();
@@ -63,7 +61,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         cycleLength = _cycleLength;
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
         lastDistributionBlock = block.number;
-        
+
         _initializeOwner(msg.sender);
     }
 
@@ -87,7 +85,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         if (activeRecipients.length == 0) revert NoRecipients();
 
         uint256[] memory votes = _getVotingResults();
-        
+
         // Calculate distributions
         uint256[] memory votedDistributions = _calculateVotedDistributions(votes, totalVotes, votedAmount);
         uint256[] memory fixedDistributions = _calculateFixedDistributions(activeRecipients, fixedAmount);
@@ -142,10 +140,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
         uint256 minYieldRequired = activeRecipients.length;
         if (yieldFixedSplitDivisor > 0) {
-            minYieldRequired = availableYield / yieldFixedSplitDivisor >= activeRecipients.length ? 
-                               availableYield : 0;
+            minYieldRequired = availableYield / yieldFixedSplitDivisor >= activeRecipients.length ? availableYield : 0;
         }
-        
+
         if (minYieldRequired == 0) {
             return (false, "Insufficient yield for distribution");
         }
@@ -170,7 +167,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param amount Amount to withdraw
     function emergencyWithdraw(address token, address to, uint256 amount) external onlyOwner whenPaused {
         if (to == address(0)) revert ZeroAddress();
-        
+
         IERC20(token).safeTransfer(to, amount);
         emit EmergencyWithdraw(token, to, amount, msg.sender);
     }
@@ -232,25 +229,25 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param _totalVotes Total votes cast
     /// @param totalAmount Total amount to distribute
     /// @return distributions Array of distribution amounts
-    function _calculateVotedDistributions(
-        uint256[] memory votes,
-        uint256 _totalVotes,
-        uint256 totalAmount
-    ) internal pure returns (uint256[] memory distributions) {
+    function _calculateVotedDistributions(uint256[] memory votes, uint256 _totalVotes, uint256 totalAmount)
+        internal
+        pure
+        returns (uint256[] memory distributions)
+    {
         if (votes.length == 0 || _totalVotes == 0 || totalAmount == 0) {
             return new uint256[](0);
         }
-        
+
         distributions = new uint256[](votes.length);
         uint256 distributed = 0;
-        
+
         for (uint256 i = 0; i < votes.length; i++) {
             if (votes[i] > 0) {
                 distributions[i] = (votes[i] * totalAmount * PRECISION) / (_totalVotes * PRECISION);
                 distributed += distributions[i];
             }
         }
-        
+
         // Handle rounding remainder
         if (distributed < totalAmount) {
             uint256 remainder = totalAmount - distributed;
@@ -261,7 +258,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
                 }
             }
         }
-        
+
         return distributions;
     }
 
@@ -269,25 +266,26 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param activeRecipients Array of recipient addresses
     /// @param totalAmount Total amount for fixed distribution
     /// @return distributions Array of distribution amounts
-    function _calculateFixedDistributions(
-        address[] memory activeRecipients,
-        uint256 totalAmount
-    ) internal pure returns (uint256[] memory distributions) {
+    function _calculateFixedDistributions(address[] memory activeRecipients, uint256 totalAmount)
+        internal
+        pure
+        returns (uint256[] memory distributions)
+    {
         if (activeRecipients.length == 0 || totalAmount == 0) {
             return new uint256[](0);
         }
-        
+
         distributions = new uint256[](activeRecipients.length);
         uint256 baseAmount = totalAmount / activeRecipients.length;
         uint256 remainder = totalAmount % activeRecipients.length;
-        
+
         for (uint256 i = 0; i < activeRecipients.length; i++) {
             distributions[i] = baseAmount;
             if (i == 0 && remainder > 0) {
                 distributions[i] += remainder;
             }
         }
-        
+
         return distributions;
     }
 
@@ -301,18 +299,18 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         uint256[] memory fixedDistributions
     ) internal {
         uint256 recipientCount = activeRecipients.length;
-        
+
         for (uint256 i = 0; i < recipientCount; i++) {
             uint256 totalAmount = 0;
-            
+
             if (votedDistributions.length > i) {
                 totalAmount += votedDistributions[i];
             }
-            
+
             if (fixedDistributions.length > i) {
                 totalAmount += fixedDistributions[i];
             }
-            
+
             if (totalAmount > 0) {
                 IERC20(yieldToken).safeTransfer(activeRecipients[i], totalAmount);
             }
@@ -323,14 +321,14 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     function _completeCycleTransition() internal virtual {
         lastDistributionBlock = block.number;
         cycleNumber++;
-        
+
         // Reset voting state
         delete currentVotes;
         totalVotes = 0;
-        
+
         // Process any queued changes via hooks
         _processQueuedChanges();
-        
+
         emit CycleCompleted(cycleNumber, block.number);
     }
 
@@ -353,9 +351,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         state.recipients = activeRecipients;
         state.votedDistributions = votedDistributions;
         state.fixedDistributions = fixedDistributions;
-        
+
         (state.fixedAmount, state.votedAmount) = _calculateSplits(totalYield);
-        
+
         emit DistributionValidated(totalYield, activeRecipients.length);
     }
 }

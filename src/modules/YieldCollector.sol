@@ -39,10 +39,10 @@ contract YieldCollector is ReentrancyGuard, Ownable {
 
     address public distributionManager;
     address public yieldToken;
-    
+
     mapping(address => YieldSource) public yieldSources;
     address[] public sourceAddresses;
-    
+
     uint256 public totalYieldCollected;
     uint256 public lastCollectionBlock;
 
@@ -70,7 +70,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     function addYieldSource(address source, string memory name) external onlyOwner {
         if (source == address(0)) revert ZeroAddress();
         if (yieldSources[source].sourceAddress != address(0)) revert SourceAlreadyRegistered();
-        
+
         yieldSources[source] = YieldSource({
             sourceAddress: source,
             isActive: true,
@@ -78,7 +78,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
             totalCollected: 0,
             sourceName: name
         });
-        
+
         sourceAddresses.push(source);
         emit YieldSourceAdded(source, name);
     }
@@ -87,9 +87,9 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     /// @param source Address of the yield source to remove
     function removeYieldSource(address source) external onlyOwner {
         if (yieldSources[source].sourceAddress == address(0)) revert SourceNotRegistered();
-        
+
         delete yieldSources[source];
-        
+
         for (uint256 i = 0; i < sourceAddresses.length; i++) {
             if (sourceAddresses[i] == source) {
                 sourceAddresses[i] = sourceAddresses[sourceAddresses.length - 1];
@@ -97,7 +97,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
                 break;
             }
         }
-        
+
         emit YieldSourceRemoved(source);
     }
 
@@ -106,7 +106,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     /// @param isActive New active status
     function toggleYieldSource(address source, bool isActive) external onlyOwner {
         if (yieldSources[source].sourceAddress == address(0)) revert SourceNotRegistered();
-        
+
         yieldSources[source].isActive = isActive;
         emit YieldSourceToggled(source, isActive);
     }
@@ -115,12 +115,12 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     /// @return Amount of tokens minted
     function mintTokensBeforeCollection() external onlyDistributionManager returns (uint256) {
         uint256 requiredTokens = calculateRequiredTokensForDistribution();
-        
+
         if (requiredTokens > 0) {
             IYieldModule(yieldToken).mint(requiredTokens, address(this));
             emit TokensMinted(yieldToken, requiredTokens);
         }
-        
+
         return requiredTokens;
     }
 
@@ -128,16 +128,16 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     /// @return totalYield Total yield collected from all sources
     function collectYield() external onlyDistributionManager nonReentrant returns (uint256 totalYield) {
         if (sourceAddresses.length == 0) revert NoSources();
-        
+
         uint256[] memory amounts = new uint256[](sourceAddresses.length);
         uint256 activeSourceCount = 0;
-        
+
         for (uint256 i = 0; i < sourceAddresses.length; i++) {
             address source = sourceAddresses[i];
             YieldSource storage yieldSource = yieldSources[source];
-            
+
             if (!yieldSource.isActive) continue;
-            
+
             uint256 collected = _collectFromSource(source);
             if (collected > 0) {
                 amounts[i] = collected;
@@ -145,18 +145,18 @@ contract YieldCollector is ReentrancyGuard, Ownable {
                 yieldSource.lastCollectedBlock = block.number;
                 yieldSource.totalCollected += collected;
                 activeSourceCount++;
-                
+
                 emit YieldCollected(source, collected, block.number);
             }
         }
-        
+
         if (totalYield == 0) revert InsufficientYield();
-        
+
         totalYieldCollected += totalYield;
         lastCollectionBlock = block.number;
-        
+
         emit YieldValidated(totalYield, activeSourceCount);
-        
+
         return totalYield;
     }
 
@@ -178,7 +178,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     function validateYieldSources() external view returns (bool isValid, address[] memory invalidSources) {
         uint256 invalidCount = 0;
         address[] memory tempInvalid = new address[](sourceAddresses.length);
-        
+
         for (uint256 i = 0; i < sourceAddresses.length; i++) {
             address source = sourceAddresses[i];
             if (yieldSources[source].isActive && !_isSourceValid(source)) {
@@ -186,38 +186,42 @@ contract YieldCollector is ReentrancyGuard, Ownable {
                 invalidCount++;
             }
         }
-        
+
         if (invalidCount == 0) {
             return (true, new address[](0));
         }
-        
+
         invalidSources = new address[](invalidCount);
         for (uint256 i = 0; i < invalidCount; i++) {
             invalidSources[i] = tempInvalid[i];
         }
-        
+
         return (false, invalidSources);
     }
 
     /// @notice Claims yield from specific sources
     /// @param sources Array of source addresses to claim from
     /// @return totalClaimed Total amount claimed
-    function claimFromSources(address[] memory sources) external onlyDistributionManager returns (uint256 totalClaimed) {
+    function claimFromSources(address[] memory sources)
+        external
+        onlyDistributionManager
+        returns (uint256 totalClaimed)
+    {
         for (uint256 i = 0; i < sources.length; i++) {
             address source = sources[i];
             if (yieldSources[source].sourceAddress == address(0)) revert SourceNotRegistered();
             if (!yieldSources[source].isActive) continue;
-            
+
             uint256 claimed = _collectFromSource(source);
             if (claimed > 0) {
                 totalClaimed += claimed;
                 yieldSources[source].lastCollectedBlock = block.number;
                 yieldSources[source].totalCollected += claimed;
-                
+
                 emit YieldCollected(source, claimed, block.number);
             }
         }
-        
+
         return totalClaimed;
     }
 
@@ -226,11 +230,11 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     function calculateRequiredTokensForDistribution() public view returns (uint256) {
         uint256 currentBalance = IERC20(yieldToken).balanceOf(distributionManager);
         uint256 availableYield = this.getAvailableYield();
-        
+
         if (availableYield > currentBalance) {
             return availableYield - currentBalance;
         }
-        
+
         return 0;
     }
 
@@ -250,7 +254,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
                 activeCount++;
             }
         }
-        
+
         address[] memory activeSources = new address[](activeCount);
         uint256 index = 0;
         for (uint256 i = 0; i < sourceAddresses.length; i++) {
@@ -259,7 +263,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
                 index++;
             }
         }
-        
+
         return activeSources;
     }
 
@@ -302,7 +306,7 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     /// @return Whether the source is valid
     function _isSourceValid(address source) internal view returns (bool) {
         if (source.code.length == 0) return false;
-        
+
         try IYieldModule(source).yieldAccrued() returns (uint256) {
             return true;
         } catch {
