@@ -6,6 +6,8 @@ import {VotingModule} from "../src/modules/VotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
 import {IBreadKitToken} from "../src/interfaces/IBreadKitToken.sol";
+import {IRecipientRegistry} from "../src/interfaces/IRecipientRegistry.sol";
+import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
@@ -47,6 +49,7 @@ contract VotingModuleSimpleTest is Test {
     VotingModule public votingModule;
     TokenBasedVotingPower public tokenStrategy;
     MockToken public token;
+    MockRecipientRegistry public recipientRegistry;
     
     // Test accounts
     address public owner;
@@ -82,6 +85,13 @@ contract VotingModuleSimpleTest is Test {
         // Deploy voting power strategy
         tokenStrategy = new TokenBasedVotingPower(IBreadKitToken(address(token)));
         
+        // Deploy mock recipient registry with 3 recipients
+        address[] memory recipients = new address[](3);
+        recipients[0] = address(0x1111);
+        recipients[1] = address(0x2222);
+        recipients[2] = address(0x3333);
+        recipientRegistry = new MockRecipientRegistry(recipients);
+        
         // Deploy and initialize voting module
         votingModule = new VotingModule();
         IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](1);
@@ -89,6 +99,7 @@ contract VotingModuleSimpleTest is Test {
         
         votingModule.initialize(MAX_POINTS, strategies);
         votingModule.setMinRequiredVotingPower(MIN_VOTING_POWER);
+        votingModule.setRecipientRegistry(address(recipientRegistry));
     }
 
     function testInitialization() public view {
@@ -162,6 +173,70 @@ contract VotingModuleSimpleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
+    function testIncorrectRecipientCount() public {
+        // Try to vote with wrong number of points (2 instead of 3)
+        uint256[] memory points = new uint256[](2);
+        points[0] = 50;
+        points[1] = 50;
+        
+        vm.prank(voter1);
+        vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
+        votingModule.vote(points);
+        
+        // Try with 4 points (too many)
+        uint256[] memory points2 = new uint256[](4);
+        points2[0] = 25;
+        points2[1] = 25;
+        points2[2] = 25;
+        points2[3] = 25;
+        
+        vm.prank(voter1);
+        vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
+        votingModule.vote(points2);
+    }
+    
+    function testValidRecipientCount() public {
+        // Vote with correct number of points (3 recipients)
+        uint256[] memory points = new uint256[](3);
+        points[0] = 50;
+        points[1] = 30;
+        points[2] = 20;
+        
+        vm.prank(voter1);
+        votingModule.vote(points);
+        
+        // Check vote was recorded
+        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
+        assertEq(distribution.length, 3);
+        
+        // Verify expected points length
+        assertEq(votingModule.getExpectedPointsLength(), 3);
+    }
+    
+    function testRecipientRegistryUpdate() public {
+        // Add a new recipient
+        address[] memory newRecipients = new address[](4);
+        newRecipients[0] = address(0x1111);
+        newRecipients[1] = address(0x2222);
+        newRecipients[2] = address(0x3333);
+        newRecipients[3] = address(0x4444);
+        recipientRegistry.setActiveRecipients(newRecipients);
+        
+        // Now need 4 points
+        uint256[] memory points = new uint256[](4);
+        points[0] = 25;
+        points[1] = 25;
+        points[2] = 25;
+        points[3] = 25;
+        
+        vm.prank(voter1);
+        votingModule.vote(points);
+        
+        // Check vote was recorded with 4 points
+        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
+        assertEq(distribution.length, 4);
+    }
+    
     function testInvalidSignature() public {
         uint256[] memory points = new uint256[](3);
         points[0] = 50;

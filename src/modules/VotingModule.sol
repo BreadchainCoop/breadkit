@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {IVotingModule} from "../interfaces/IVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
+import {IRecipientRegistry} from "../interfaces/IRecipientRegistry.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -40,8 +41,9 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     mapping(uint256 => uint256) public cycleVotingPower;
     mapping(uint256 => uint256) public currentVotes;
 
-    // Distribution module reference
+    // Module references
     IDistributionModule public distributionModule;
+    IRecipientRegistry public recipientRegistry;
 
     // Events
     event VoteCastWithSignature(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce);
@@ -49,6 +51,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     event VotingModuleInitialized(IVotingPowerStrategy[] strategies);
     event CycleStarted(uint256 indexed cycle, uint256 startBlock);
     event DistributionModuleSet(address distributionModule);
+    event RecipientRegistrySet(address recipientRegistry);
     event MinRequiredVotingPowerSet(uint256 minPower);
     event MaxPointsSet(uint256 maxPoints);
 
@@ -66,7 +69,8 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     error NotInVotingPeriod();
     error StartMustBeBeforeEnd();
     error EndAfterCurrentBlock();
-    error IncorrectNumberOfProjects();
+    error IncorrectNumberOfRecipients();
+    error RecipientRegistryNotSet();
 
     /// @notice Initializes the voting module with strategies
     /// @param _maxPoints Maximum points that can be allocated per recipient
@@ -158,6 +162,12 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     /// @inheritdoc IVotingModule
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         if (points.length == 0) return false;
+        
+        // Check if recipient registry is set and validate array length
+        if (address(recipientRegistry) != address(0)) {
+            uint256 recipientCount = recipientRegistry.getActiveRecipientsCount();
+            if (points.length != recipientCount) return false;
+        }
 
         uint256 totalPoints;
         for (uint256 i = 0; i < points.length; i++) {
@@ -268,6 +278,26 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     function setDistributionModule(address _distributionModule) external onlyOwner {
         distributionModule = IDistributionModule(_distributionModule);
         emit DistributionModuleSet(_distributionModule);
+    }
+
+    /// @notice Sets the recipient registry address
+    /// @param _recipientRegistry Address of the recipient registry
+    function setRecipientRegistry(address _recipientRegistry) external onlyOwner {
+        recipientRegistry = IRecipientRegistry(_recipientRegistry);
+        emit RecipientRegistrySet(_recipientRegistry);
+    }
+
+    /// @notice Gets the recipient registry address
+    /// @return The address of the recipient registry
+    function getRecipientRegistry() external view returns (address) {
+        return address(recipientRegistry);
+    }
+
+    /// @notice Gets the expected number of vote points based on active recipients
+    /// @return The number of active recipients (expected array length for votes)
+    function getExpectedPointsLength() external view returns (uint256) {
+        if (address(recipientRegistry) == address(0)) revert RecipientRegistryNotSet();
+        return recipientRegistry.getActiveRecipientsCount();
     }
 
     /// @notice Starts a new voting cycle
