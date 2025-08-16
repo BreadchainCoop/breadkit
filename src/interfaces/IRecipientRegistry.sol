@@ -2,106 +2,67 @@
 pragma solidity ^0.8.20;
 
 /// @title IRecipientRegistry
-/// @notice Interface for managing yield recipients with time-delayed queue system
-/// @dev Provides secure recipient management through validation and time delays
+/// @notice Interface for managing yield recipients with simple queueing
+/// @dev Based on the Breadchain YieldDistributor queueing model
 interface IRecipientRegistry {
-    struct Recipient {
-        address addr;
-        uint256 percentage;
-        string metadata;
-        bool isActive;
-        uint256 addedAt;
-    }
-
-    struct QueuedChange {
-        uint256 changeType; // 0: add, 1: remove, 2: update
-        address recipient;
-        uint256 percentage;
-        string metadata;
-        uint256 executeAfter;
-        bool executed;
-        bool cancelled;
-    }
-
-    event RecipientQueued(uint256 indexed changeId, uint256 changeType, address recipient, uint256 executeAfter);
-    event RecipientAdded(address indexed recipient, uint256 percentage, string metadata);
+    
+    // Events
+    event RecipientQueued(address indexed recipient, bool isAddition);
+    event RecipientAdded(address indexed recipient);
     event RecipientRemoved(address indexed recipient);
-    event RecipientUpdated(address indexed recipient, uint256 percentage, string metadata);
-    event ChangeExecuted(uint256 indexed changeId);
-    event ChangeCancelled(uint256 indexed changeId);
-    event DelayUpdated(uint256 oldDelay, uint256 newDelay);
-
+    event QueueProcessed(uint256 added, uint256 removed);
+    
+    // Errors
     error InvalidRecipient();
-    error InvalidPercentage();
     error RecipientAlreadyExists();
     error RecipientNotFound();
-    error TotalPercentageExceeds100();
-    error UnauthorizedAccess();
-    error QueueEmpty();
+    error RecipientAlreadyQueued();
 
-    /// @notice Queue a new recipient addition
-    /// @param recipient Address of the recipient to add
-    /// @param percentage Percentage allocation for the recipient
-    /// @param metadata Additional information about the recipient
-    /// @return changeId Unique identifier for the queued change
-    function queueAddRecipient(address recipient, uint256 percentage, string calldata metadata)
-        external
-        returns (uint256 changeId);
+    /// @notice Queue a recipient for addition
+    /// @param recipient Address to add
+    function queueRecipientAddition(address recipient) external;
 
-    /// @notice Queue a recipient removal
-    /// @param recipient Address of the recipient to remove
-    /// @return changeId Unique identifier for the queued change
-    function queueRemoveRecipient(address recipient) external returns (uint256 changeId);
+    /// @notice Queue a recipient for removal
+    /// @param recipient Address to remove
+    function queueRecipientRemoval(address recipient) external;
 
-    /// @notice Queue a recipient update
-    /// @param recipient Address of the recipient to update
-    /// @param percentage New percentage allocation
-    /// @param metadata New metadata
-    /// @return changeId Unique identifier for the queued change
-    function queueUpdateRecipient(address recipient, uint256 percentage, string calldata metadata)
-        external
-        returns (uint256 changeId);
+    /// @notice Process all queued changes
+    function processQueue() external;
 
-    /// @notice Execute a queued change after delay period
-    /// @param changeId Identifier of the change to execute
-    function executeChange(uint256 changeId) external;
+    /// @notice Clear the addition queue
+    function clearAdditionQueue() external;
 
-    /// @notice Cancel a queued change
-    /// @param changeId Identifier of the change to cancel
-    function cancelChange(uint256 changeId) external;
+    /// @notice Clear the removal queue
+    function clearRemovalQueue() external;
 
     /// @notice Get all active recipients
-    /// @return Array of active recipients
-    function getActiveRecipients() external view returns (Recipient[] memory);
+    /// @return Array of active recipient addresses
+    function getRecipients() external view returns (address[] memory);
 
-    /// @notice Get a specific recipient's details
-    /// @param recipient Address of the recipient
-    /// @return Recipient details
-    function getRecipient(address recipient) external view returns (Recipient memory);
+    /// @notice Get queued additions
+    /// @return Array of addresses queued for addition
+    function getQueuedAdditions() external view returns (address[] memory);
 
-    /// @notice Get a queued change details
-    /// @param changeId Identifier of the change
-    /// @return QueuedChange details
-    function getQueuedChange(uint256 changeId) external view returns (QueuedChange memory);
+    /// @notice Get queued removals
+    /// @return Array of addresses queued for removal
+    function getQueuedRemovals() external view returns (address[] memory);
 
-    /// @notice Get all pending changes
-    /// @return Array of pending change IDs
-    function getPendingChanges() external view returns (uint256[] memory);
+    /// @notice Get count of active recipients
+    /// @return Number of active recipients
+    function getRecipientCount() external view returns (uint256);
 
-    /// @notice Check if an address is an active recipient
+    /// @notice Check if address is an active recipient
     /// @param recipient Address to check
-    /// @return bool True if active recipient
-    function isActiveRecipient(address recipient) external view returns (bool);
+    /// @return True if active recipient
+    function isRecipient(address recipient) external view returns (bool);
 
-    /// @notice Get the current time delay for changes
-    /// @return uint256 Current delay in seconds
-    function getDelay() external view returns (uint256);
+    /// @notice Check if address is queued for addition
+    /// @param recipient Address to check
+    /// @return True if queued for addition
+    function isQueuedForAddition(address recipient) external view returns (bool);
 
-    /// @notice Set a new time delay for changes
-    /// @param newDelay New delay in seconds
-    function setDelay(uint256 newDelay) external;
-
-    /// @notice Validate that total percentages don't exceed 100%
-    /// @return bool True if valid
-    function validatePercentages() external view returns (bool);
+    /// @notice Check if address is queued for removal
+    /// @param recipient Address to check
+    /// @return True if queued for removal
+    function isQueuedForRemoval(address recipient) external view returns (bool);
 }
