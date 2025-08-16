@@ -13,26 +13,6 @@ interface IRecipientRegistry {
     /// @return The count of active recipients
     function getActiveRecipientsCount() external view returns (uint256);
 
-    /// @notice Gets recipients queued for addition
-    /// @return Array of addresses queued for addition
-    function getQueuedAdditions() external view returns (address[] memory);
-
-    /// @notice Gets recipients queued for removal
-    /// @return Array of addresses queued for removal
-    function getQueuedRemovals() external view returns (address[] memory);
-
-    /// @notice Queues a recipient for addition in the next cycle
-    /// @param recipient The recipient address to add
-    function queueRecipientAddition(address recipient) external;
-
-    /// @notice Queues a recipient for removal in the next cycle
-    /// @param recipient The recipient address to remove
-    function queueRecipientRemoval(address recipient) external;
-
-    /// @notice Processes all queued changes (additions and removals)
-    /// @dev Should be called at the end of each cycle
-    function processQueuedChanges() external;
-
     /// @notice Validates if a recipient address is valid
     /// @param recipient The address to validate
     /// @return True if the recipient is valid

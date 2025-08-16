@@ -36,24 +36,25 @@ contract MockRecipientRegistry is IRecipientRegistry {
         return activeRecipients.length;
     }
 
-    function getQueuedAdditions() external view override returns (address[] memory) {
+    // Internal queue management functions (not part of interface)
+    function getQueuedAdditions() external view returns (address[] memory) {
         return queuedAdditions;
     }
 
-    function getQueuedRemovals() external view override returns (address[] memory) {
+    function getQueuedRemovals() external view returns (address[] memory) {
         return queuedRemovals;
     }
 
-    function queueRecipientAddition(address recipient) external override {
+    function queueRecipientAddition(address recipient) external {
         queuedAdditions.push(recipient);
     }
 
-    function queueRecipientRemoval(address recipient) external override {
+    function queueRecipientRemoval(address recipient) external {
         require(isRecipient[recipient], "Not a recipient");
         queuedRemovals.push(recipient);
     }
 
-    function processQueuedChanges() external override {
+    function processQueuedChanges() external {
         // Process additions
         for (uint256 i = 0; i < queuedAdditions.length; i++) {
             address recipient = queuedAdditions[i];
