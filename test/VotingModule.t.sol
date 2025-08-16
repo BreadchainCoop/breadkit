@@ -141,7 +141,7 @@ contract VotingModuleTest is Test {
 
         // Cast vote with signature
         vm.expectEmit(true, false, false, true);
-        emit VoteCastWithSignature(voter1, points, votingModule.getTotalVotingPower(voter1), nonce);
+        emit VoteCastWithSignature(voter1, points, votingModule.getVotingPower(voter1), nonce);
 
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
@@ -315,12 +315,12 @@ contract VotingModuleTest is Test {
         assertFalse(votingModule.validateSignature(voter2, points, nonce, signature));
     }
 
-    function testGetTotalVotingPower() public view {
-        uint256 power = votingModule.getTotalVotingPower(voter1);
+    function testGetVotingPower() public view {
+        uint256 power = votingModule.getVotingPower(voter1);
         assertGt(power, 0);
 
         // Voter1 should have more power than voter2
-        uint256 power2 = votingModule.getTotalVotingPower(voter2);
+        uint256 power2 = votingModule.getVotingPower(voter2);
         assertGt(power, power2);
     }
 

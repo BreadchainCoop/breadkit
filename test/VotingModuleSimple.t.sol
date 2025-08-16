@@ -6,31 +6,83 @@ import {VotingModule} from "../src/modules/VotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
 import {IBreadKitToken} from "../src/interfaces/IBreadKitToken.sol";
-import {IRecipientRegistry} from "../src/interfaces/IRecipientRegistry.sol";
+import {IMockRecipientRegistry} from "../src/interfaces/IMockRecipientRegistry.sol";
 import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20VotesUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
-// Simple mock token for testing
-contract MockToken is IBreadKitToken, ERC20VotesUpgradeable {
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize() external initializer {
-        __ERC20_init("Mock Token", "MOCK");
-        __ERC20Votes_init();
-    }
+// Simple mock token for testing (non-upgradeable)
+contract MockToken is IBreadKitToken {
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
+    mapping(address => address) private _delegates;
+    mapping(address => uint256) private _votingPower;
+    
+    uint256 private _totalSupply;
+    string public name = "Mock Token";
+    string public symbol = "MOCK";
+    uint8 public decimals = 18;
 
     function mint(address receiver) external payable override {
         _mint(receiver, msg.value);
-        if (delegates(receiver) == address(0)) _delegate(receiver, receiver);
     }
 
     function mint(address receiver, uint256 amount) external override {
         _mint(receiver, amount);
-        if (delegates(receiver) == address(0)) _delegate(receiver, receiver);
+    }
+
+    function _mint(address account, uint256 amount) internal {
+        _totalSupply += amount;
+        _balances[account] += amount;
+        _votingPower[account] += amount;
+        if (_delegates[account] == address(0)) {
+            _delegates[account] = account;
+        }
+    }
+
+    function balanceOf(address account) external view returns (uint256) {
+        return _balances[account];
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return _totalSupply;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        _balances[msg.sender] -= amount;
+        _balances[to] += amount;
+        return true;
+    }
+
+    function allowance(address owner, address spender) external view returns (uint256) {
+        return _allowances[owner][spender];
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        _allowances[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        _allowances[from][msg.sender] -= amount;
+        _balances[from] -= amount;
+        _balances[to] += amount;
+        return true;
+    }
+
+    function delegates(address account) external view returns (address) {
+        return _delegates[account] == address(0) ? account : _delegates[account];
+    }
+
+    function delegate(address delegatee) external {
+        _delegates[msg.sender] = delegatee;
+    }
+
+    function getVotes(address account) external view returns (uint256) {
+        return _votingPower[account];
+    }
+
+    function getPastVotes(address account, uint256) external view returns (uint256) {
+        return _votingPower[account];
     }
 
     function burn(uint256, address) external override {}
@@ -72,9 +124,8 @@ contract VotingModuleSimpleTest is Test {
         voter1 = vm.addr(voter1PrivateKey);
         voter2 = vm.addr(voter2PrivateKey);
 
-        // Deploy and initialize mock token
+        // Deploy mock token
         token = new MockToken();
-        token.initialize();
 
         // Mint tokens to test accounts
         token.mint(voter1, 5 ether);
@@ -137,7 +188,7 @@ contract VotingModuleSimpleTest is Test {
 
         // Cast vote with signature
         vm.expectEmit(true, false, false, true);
-        emit VoteCastWithSignature(voter1, points, votingModule.getTotalVotingPower(voter1), nonce);
+        emit VoteCastWithSignature(voter1, points, votingModule.getVotingPower(voter1), nonce);
 
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 

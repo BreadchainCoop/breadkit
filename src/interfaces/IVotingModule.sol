@@ -29,20 +29,6 @@ interface IVotingModule {
     /// @return The current voting power of the account
     function getVotingPower(address account) external view returns (uint256);
 
-    /// @notice Gets the voting power of an account for a specific time period
-    /// @dev Returns the voting power an account had during a specific time period
-    /// @param account The address to check voting power for
-    /// @param start The start timestamp of the period
-    /// @param end The end timestamp of the period
-    /// @return The voting power of the account during the specified period
-    function getVotingPowerForPeriod(address account, uint256 start, uint256 end) external view returns (uint256);
-
-    /// @notice Gets the current accumulated voting power of an account
-    /// @dev Returns the total accumulated voting power an account has earned
-    /// @param account The address to check accumulated voting power for
-    /// @return The current accumulated voting power of the account
-    function getCurrentAccumulatedVotingPower(address account) external view returns (uint256);
-
     /// @notice Casts a vote with points for each project
     /// @dev This function is an alias for vote() and records a user's vote with points
     /// @param points Array of points allocated to each project
@@ -104,17 +90,6 @@ interface IVotingModule {
         view
         returns (bool);
 
-    /// @notice Gets the total voting power from all strategies
-    /// @dev Aggregates voting power from all configured strategies
-    /// @param voter The address to check voting power for
-    /// @return The total voting power from all strategies
-    function getTotalVotingPower(address voter) external view returns (uint256);
-
-    /// @notice Gets the total voting power for a specific cycle
-    /// @dev Returns the total voting power used in a specific cycle
-    /// @param cycle The cycle number to query
-    /// @return The total voting power for the cycle
-    function getTotalVotingPowerForCycle(uint256 cycle) external view returns (uint256);
 
     /// @notice Returns the EIP-712 domain separator
     /// @dev Used for signature verification

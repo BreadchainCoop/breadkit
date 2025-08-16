@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {IVotingModule} from "../interfaces/IVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
-import {IRecipientRegistry} from "../interfaces/IRecipientRegistry.sol";
+import {IMockRecipientRegistry} from "../interfaces/IMockRecipientRegistry.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -40,7 +40,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
 
     // Module references
     IDistributionModule public distributionModule;
-    IRecipientRegistry public recipientRegistry;
+    IMockRecipientRegistry public recipientRegistry;
 
     // Events
     event VoteCastWithSignature(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce);
@@ -117,7 +117,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
 
     /// @inheritdoc IVotingModule
     function vote(uint256[] calldata points) public override {
-        uint256 votingPower = getTotalVotingPower(msg.sender);
+        uint256 votingPower = _calculateTotalVotingPower(msg.sender);
 
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
@@ -184,47 +184,8 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    function getTotalVotingPower(address voter) public view override returns (uint256) {
-        uint256 totalPower = 0;
-
-        for (uint256 i = 0; i < votingPowerStrategies.length; i++) {
-            totalPower += votingPowerStrategies[i].getCurrentVotingPower(voter);
-        }
-
-        return totalPower;
-    }
-
-    /// @inheritdoc IVotingModule
     function getVotingPower(address account) external view override returns (uint256) {
-        return getTotalVotingPower(account);
-    }
-
-    /// @inheritdoc IVotingModule
-    function getVotingPowerForPeriod(address account, uint256 start, uint256 end)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        // This would need to be implemented based on specific strategy requirements
-        // For now, return current voting power
-        return getTotalVotingPower(account);
-    }
-
-    /// @inheritdoc IVotingModule
-    function getCurrentAccumulatedVotingPower(address account) external view override returns (uint256) {
-        uint256 totalPower = 0;
-
-        for (uint256 i = 0; i < votingPowerStrategies.length; i++) {
-            totalPower += votingPowerStrategies[i].getAccumulatedVotingPower(account);
-        }
-
-        return totalPower;
-    }
-
-    /// @inheritdoc IVotingModule
-    function getTotalVotingPowerForCycle(uint256 cycle) external view override returns (uint256) {
-        return cycleVotingPower[cycle];
+        return _calculateTotalVotingPower(account);
     }
 
     /// @inheritdoc IVotingModule
@@ -263,7 +224,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     /// @notice Sets the recipient registry address
     /// @param _recipientRegistry Address of the recipient registry
     function setRecipientRegistry(address _recipientRegistry) external onlyOwner {
-        recipientRegistry = IRecipientRegistry(_recipientRegistry);
+        recipientRegistry = IMockRecipientRegistry(_recipientRegistry);
         emit RecipientRegistrySet(_recipientRegistry);
     }
 
@@ -292,17 +253,20 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     function _castSingleVote(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
         internal
     {
-        // Validate and consume nonce
+        // Check nonce hasn't been used
         if (usedNonces[voter][nonce]) revert NonceAlreadyUsed();
-        usedNonces[voter][nonce] = true;
 
         // Verify signature
-        if (!validateSignature(voter, points, nonce, signature)) {
-            revert InvalidSignature();
-        }
+        bytes32 structHash = keccak256(abi.encode(VOTE_TYPEHASH, voter, keccak256(abi.encodePacked(points)), nonce));
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address signer = hash.recover(signature);
+        if (signer != voter) revert InvalidSignature();
+
+        // Mark nonce as used after validation
+        usedNonces[voter][nonce] = true;
 
         // Get total voting power
-        uint256 votingPower = getTotalVotingPower(voter);
+        uint256 votingPower = _calculateTotalVotingPower(voter);
 
         // Validate points
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
@@ -312,6 +276,16 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         _processVote(voter, points, votingPower, hasVotedInCycle);
 
         emit VoteCastWithSignature(voter, points, votingPower, nonce);
+    }
+
+    function _calculateTotalVotingPower(address account) internal view returns (uint256) {
+        uint256 totalPower = 0;
+
+        for (uint256 i = 0; i < votingPowerStrategies.length; i++) {
+            totalPower += votingPowerStrategies[i].getCurrentVotingPower(account);
+        }
+
+        return totalPower;
     }
 
     function _processVote(address voter, uint256[] calldata points, uint256 votingPower, bool hasVotedInCycle)

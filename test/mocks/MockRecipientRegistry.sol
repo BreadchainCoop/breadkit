@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IRecipientRegistry} from "../../src/interfaces/IRecipientRegistry.sol";
+import {IMockRecipientRegistry} from "../../src/interfaces/IMockRecipientRegistry.sol";
 
 /// @title MockRecipientRegistry
-/// @notice Mock implementation of IRecipientRegistry for testing
-contract MockRecipientRegistry is IRecipientRegistry {
+/// @notice Mock implementation of IMockRecipientRegistry for testing
+contract MockRecipientRegistry is IMockRecipientRegistry {
     address[] public activeRecipients;
     address[] public queuedAdditions;
     address[] public queuedRemovals;
