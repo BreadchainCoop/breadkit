@@ -56,11 +56,7 @@ contract ChainlinkAutomation is IAutomation {
     /// @notice Check if upkeep is needed (Chainlink Automation interface)
     /// @return upkeepNeeded Whether upkeep is needed
     /// @return performData Data to pass to performUpkeep
-    function checkUpkeep(bytes calldata) 
-        external 
-        view 
-        returns (bool upkeepNeeded, bytes memory performData) 
-    {
+    function checkUpkeep(bytes calldata) external view returns (bool upkeepNeeded, bytes memory performData) {
         return checkCondition();
     }
 
@@ -99,12 +95,12 @@ contract ChainlinkAutomation is IAutomation {
     /// @param data Encoded execution data
     function _execute(bytes calldata data) internal {
         if (!isActive) revert NotAuthorized();
-        
-        (bool canExecute, ) = checkCondition();
+
+        (bool canExecute,) = checkCondition();
         if (!canExecute) revert DistributionNotReady();
 
         // Decode and execute the function call
-        (bool success, ) = address(this).call(data);
+        (bool success,) = address(this).call(data);
         require(success, "Execution failed");
 
         emit UpkeepPerformed(block.timestamp, data);
@@ -118,7 +114,7 @@ contract ChainlinkAutomation is IAutomation {
 
         // Trigger distribution
         distributionModule.distribute();
-        
+
         // Start new cycle
         cycleManager.startNewCycle();
     }
@@ -155,6 +151,6 @@ contract ChainlinkAutomation is IAutomation {
     /// @notice Get upkeep status for monitoring
     /// @return ready Whether upkeep is needed
     function getUpkeepNeeded() external view returns (bool ready) {
-        (ready, ) = checkCondition();
+        (ready,) = checkCondition();
     }
 }

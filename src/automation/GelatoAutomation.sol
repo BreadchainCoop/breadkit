@@ -21,7 +21,7 @@ contract GelatoAutomation is IAutomation {
     bytes32 public taskId;
     bool public isActive;
     address public owner;
-    
+
     // Gelato specific
     address public dedicatedMsgSender;
     address public constant GELATO_AUTOMATE = 0x527a819db1eb0e34426297b03bae11F2f8B3A19E; // Gnosis Chain
@@ -39,10 +39,10 @@ contract GelatoAutomation is IAutomation {
     error DistributionNotReady();
 
     modifier onlyAuthorized() {
-        if (msg.sender != automationManager && 
-            msg.sender != owner && 
-            msg.sender != dedicatedMsgSender &&
-            msg.sender != GELATO_AUTOMATE) {
+        if (
+            msg.sender != automationManager && msg.sender != owner && msg.sender != dedicatedMsgSender
+                && msg.sender != GELATO_AUTOMATE
+        ) {
             revert NotAuthorized();
         }
         _;
@@ -111,12 +111,12 @@ contract GelatoAutomation is IAutomation {
     /// @param data Encoded execution data
     function _execute(bytes calldata data) internal {
         if (!isActive) revert NotAuthorized();
-        
-        (bool canExecute, ) = checkCondition();
+
+        (bool canExecute,) = checkCondition();
         if (!canExecute) revert DistributionNotReady();
 
         // Decode and execute the function call
-        (bool success, ) = address(this).call(data);
+        (bool success,) = address(this).call(data);
         require(success, "Execution failed");
 
         emit TaskExecuted(block.timestamp, data);
@@ -130,7 +130,7 @@ contract GelatoAutomation is IAutomation {
 
         // Trigger distribution
         distributionModule.distribute();
-        
+
         // Start new cycle
         cycleManager.startNewCycle();
     }

@@ -62,14 +62,10 @@ contract AutomationManager {
     /// @param provider Address of the automation provider contract
     /// @param name Name identifier for the provider
     /// @param priority Execution priority (lower number = higher priority)
-    function registerProvider(
-        address provider,
-        string calldata name,
-        uint256 priority
-    ) external onlyOwner {
+    function registerProvider(address provider, string calldata name, uint256 priority) external onlyOwner {
         if (provider == address(0)) revert ZeroAddress();
         if (providers[provider].isRegistered) revert ProviderAlreadyRegistered();
-        
+
         providers[provider] = Provider({
             name: name,
             priority: priority,
@@ -78,13 +74,13 @@ contract AutomationManager {
             executionCount: 0,
             lastExecution: 0
         });
-        
+
         providerList.push(provider);
-        
+
         if (address(cycleManager) != address(0)) {
             IAutomation(provider).setCycleManager(address(cycleManager));
         }
-        
+
         emit ProviderRegistered(provider, name, priority);
     }
 
@@ -102,13 +98,13 @@ contract AutomationManager {
     function setCycleManager(address _cycleManager) external onlyOwner {
         if (_cycleManager == address(0)) revert ZeroAddress();
         cycleManager = ICycleManager(_cycleManager);
-        
+
         for (uint256 i = 0; i < providerList.length; i++) {
             if (providers[providerList[i]].isRegistered) {
                 IAutomation(providerList[i]).setCycleManager(_cycleManager);
             }
         }
-        
+
         emit CycleManagerUpdated(_cycleManager);
     }
 
@@ -119,11 +115,11 @@ contract AutomationManager {
         if (executionCoordinator.isExecutionLocked()) {
             return (false, "Execution locked");
         }
-        
+
         if (address(cycleManager) == address(0) || !cycleManager.isDistributionReady()) {
             return (false, "Distribution not ready");
         }
-        
+
         return (true, abi.encodeWithSelector(this.executeWithProvider.selector, msg.sender));
     }
 
@@ -133,7 +129,7 @@ contract AutomationManager {
     function executeWithProvider(address provider, bytes calldata data) external onlyRegisteredProvider {
         if (!providers[provider].isActive) revert ProviderNotRegistered();
         if (!executionCoordinator.lockExecution()) revert ExecutionLocked();
-        
+
         try IAutomation(provider).execute(data) {
             providers[provider].executionCount++;
             providers[provider].lastExecution = block.timestamp;
@@ -144,7 +140,7 @@ contract AutomationManager {
             emit ExecutionFailed(provider, reason);
             revert(reason);
         }
-        
+
         executionCoordinator.unlockExecution();
     }
 

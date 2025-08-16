@@ -35,16 +35,15 @@ contract ExecutionCoordinator {
     /// @return success Whether the lock was acquired
     function lockExecution() external returns (bool success) {
         // Check if lock is expired
-        if (currentExecution.isLocked && 
-            block.timestamp > currentExecution.lockTime + LOCK_TIMEOUT) {
+        if (currentExecution.isLocked && block.timestamp > currentExecution.lockTime + LOCK_TIMEOUT) {
             // Force unlock expired lock
             _forceUnlock();
         }
-        
+
         if (currentExecution.isLocked) {
             return false;
         }
-        
+
         currentExecution = ExecutionInfo({
             isLocked: true,
             executor: msg.sender,
@@ -52,7 +51,7 @@ contract ExecutionCoordinator {
             status: ExecutionStatus.InProgress,
             failureReason: ""
         });
-        
+
         emit ExecutionLocked(msg.sender, block.timestamp);
         return true;
     }
@@ -60,22 +59,21 @@ contract ExecutionCoordinator {
     /// @notice Unlock execution after completion
     function unlockExecution() external {
         require(
-            currentExecution.executor == msg.sender || 
-            block.timestamp > currentExecution.lockTime + LOCK_TIMEOUT,
+            currentExecution.executor == msg.sender || block.timestamp > currentExecution.lockTime + LOCK_TIMEOUT,
             "Only executor or timeout can unlock"
         );
-        
+
         _unlock();
     }
 
     /// @notice Record successful execution
     function recordSuccessfulExecution() external {
         require(currentExecution.executor == msg.sender, "Only executor can record");
-        
+
         currentExecution.status = ExecutionStatus.Completed;
         lastSuccessfulExecution = block.timestamp;
         totalExecutions++;
-        
+
         emit ExecutionCompleted(msg.sender, block.timestamp);
     }
 
@@ -83,11 +81,11 @@ contract ExecutionCoordinator {
     /// @param reason Failure reason
     function recordFailedExecution(string memory reason) external {
         require(currentExecution.executor == msg.sender, "Only executor can record");
-        
+
         currentExecution.status = ExecutionStatus.Failed;
         currentExecution.failureReason = reason;
         failedExecutions++;
-        
+
         emit ExecutionFailed(msg.sender, reason);
     }
 
@@ -97,12 +95,12 @@ contract ExecutionCoordinator {
         if (!currentExecution.isLocked) {
             return false;
         }
-        
+
         // Check if lock is expired
         if (block.timestamp > currentExecution.lockTime + LOCK_TIMEOUT) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -119,11 +117,7 @@ contract ExecutionCoordinator {
     /// @return total Total executions
     /// @return failed Failed executions
     /// @return lastSuccess Timestamp of last successful execution
-    function getExecutionStats() external view returns (
-        uint256 total,
-        uint256 failed,
-        uint256 lastSuccess
-    ) {
+    function getExecutionStats() external view returns (uint256 total, uint256 failed, uint256 lastSuccess) {
         return (totalExecutions, failedExecutions, lastSuccessfulExecution);
     }
 
@@ -132,7 +126,7 @@ contract ExecutionCoordinator {
         address executor = currentExecution.executor;
         currentExecution.isLocked = false;
         currentExecution.executor = address(0);
-        
+
         emit ExecutionUnlocked(executor, block.timestamp);
     }
 
