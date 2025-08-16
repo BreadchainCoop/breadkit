@@ -20,8 +20,6 @@ contract YieldCollector is ReentrancyGuard, Ownable {
     error InsufficientYield();
     error NoYieldSource();
 
-
-
     event YieldCollected(address indexed source, uint256 amount, uint256 blockNumber);
     event TokensMinted(address indexed token, uint256 amount);
     event YieldValidated(uint256 totalYield);
