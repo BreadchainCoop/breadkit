@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../interfaces/ICycleManager.sol";
+import "../interfaces/ICycleModule.sol";
 
-/// @title AbstractCycleManager
-/// @notice Abstract contract providing core cycle management functionality with fixed cycle implementation
-/// @dev Merges cycle manager and module utilities into a single abstract contract
-abstract contract AbstractCycleManager is ICycleManager {
+/// @title AbstractCycleModule
+/// @notice Abstract contract providing core cycle functionality with fixed cycle implementation
+/// @dev All cycle utilities merged into a single abstract module
+abstract contract AbstractCycleModule is ICycleModule {
     /// @notice The length of each cycle in blocks
     uint256 public cycleLength;
 
@@ -56,7 +56,7 @@ abstract contract AbstractCycleManager is ICycleManager {
         _;
     }
 
-    /// @notice Initializes the cycle manager with fixed cycle parameters
+    /// @notice Initializes the cycle module with fixed cycle parameters
     /// @param _cycleLength The length of each cycle in blocks
     /// @param _startBlock The block number to start counting from (0 for current block)
     constructor(uint256 _cycleLength, uint256 _startBlock) {

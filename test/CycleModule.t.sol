@@ -2,11 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/CycleManager.sol";
-import "../src/abstracts/AbstractCycleManager.sol";
+import "../src/CycleModule.sol";
+import "../src/abstracts/AbstractCycleModule.sol";
 
-contract CycleManagerTest is Test {
-    CycleManager public cycleManager;
+contract CycleModuleTest is Test {
+    CycleModule public cycleModule;
     address public owner = address(this);
     address public user = address(0x1);
 
@@ -15,22 +15,22 @@ contract CycleManagerTest is Test {
 
     function setUp() public {
         vm.roll(START_BLOCK);
-        cycleManager = new CycleManager(CYCLE_LENGTH, START_BLOCK);
+        cycleModule = new CycleModule(CYCLE_LENGTH, START_BLOCK);
     }
 
     function testInitialState() public view {
-        assertEq(cycleManager.getCurrentCycle(), 1);
-        assertEq(cycleManager.cycleLength(), CYCLE_LENGTH);
-        assertEq(cycleManager.lastCycleStartBlock(), START_BLOCK);
-        assertTrue(cycleManager.authorized(owner));
+        assertEq(cycleModule.getCurrentCycle(), 1);
+        assertEq(cycleModule.cycleLength(), CYCLE_LENGTH);
+        assertEq(cycleModule.lastCycleStartBlock(), START_BLOCK);
+        assertTrue(cycleModule.authorized(owner));
     }
 
     function testCycleCompletion() public {
-        assertFalse(cycleManager.isCycleComplete());
+        assertFalse(cycleModule.isCycleComplete());
 
         // Move to end of cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        assertTrue(cycleManager.isCycleComplete());
+        assertTrue(cycleModule.isCycleComplete());
     }
 
     function testStartNewCycle() public {
@@ -38,41 +38,41 @@ contract CycleManagerTest is Test {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
 
         uint256 currentBlock = block.number;
-        cycleManager.startNewCycle();
+        cycleModule.startNewCycle();
 
-        assertEq(cycleManager.getCurrentCycle(), 2);
-        assertEq(cycleManager.lastCycleStartBlock(), currentBlock);
-        assertFalse(cycleManager.isCycleComplete());
+        assertEq(cycleModule.getCurrentCycle(), 2);
+        assertEq(cycleModule.lastCycleStartBlock(), currentBlock);
+        assertFalse(cycleModule.isCycleComplete());
     }
 
     function testCannotStartNewCycleEarly() public {
         // Try to start new cycle before current one is complete
         vm.roll(START_BLOCK + CYCLE_LENGTH - 1);
 
-        vm.expectRevert(AbstractCycleManager.InvalidCycleTransition.selector);
-        cycleManager.startNewCycle();
+        vm.expectRevert(AbstractCycleModule.InvalidCycleTransition.selector);
+        cycleModule.startNewCycle();
     }
 
     function testUnauthorizedCannotStartCycle() public {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
 
         vm.prank(user);
-        vm.expectRevert(AbstractCycleManager.NotAuthorized.selector);
-        cycleManager.startNewCycle();
+        vm.expectRevert(AbstractCycleModule.NotAuthorized.selector);
+        cycleModule.startNewCycle();
     }
 
     function testAuthorization() public {
-        assertFalse(cycleManager.authorized(user));
+        assertFalse(cycleModule.authorized(user));
 
-        cycleManager.setAuthorization(user, true);
-        assertTrue(cycleManager.authorized(user));
+        cycleModule.setAuthorization(user, true);
+        assertTrue(cycleModule.authorized(user));
 
-        cycleManager.setAuthorization(user, false);
-        assertFalse(cycleManager.authorized(user));
+        cycleModule.setAuthorization(user, false);
+        assertFalse(cycleModule.authorized(user));
     }
 
     function testGetCycleInfo() public {
-        CycleManager.CycleInfo memory info = cycleManager.getCycleInfo();
+        CycleModule.CycleInfo memory info = cycleModule.getCycleInfo();
 
         assertEq(info.cycleNumber, 1);
         assertEq(info.startBlock, START_BLOCK);
@@ -82,68 +82,68 @@ contract CycleManagerTest is Test {
 
         // Move halfway through cycle
         vm.roll(START_BLOCK + 50);
-        info = cycleManager.getCycleInfo();
+        info = cycleModule.getCycleInfo();
         assertEq(info.blocksRemaining, 50);
     }
 
     function testGetBlocksUntilNextCycle() public view {
-        assertEq(cycleManager.getBlocksUntilNextCycle(), CYCLE_LENGTH);
+        assertEq(cycleModule.getBlocksUntilNextCycle(), CYCLE_LENGTH);
     }
 
     function testGetBlocksUntilNextCyclePartway() public {
         vm.roll(START_BLOCK + 25);
-        assertEq(cycleManager.getBlocksUntilNextCycle(), 75);
+        assertEq(cycleModule.getBlocksUntilNextCycle(), 75);
     }
 
     function testGetBlocksUntilNextCycleComplete() public {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        assertEq(cycleManager.getBlocksUntilNextCycle(), 0);
+        assertEq(cycleModule.getBlocksUntilNextCycle(), 0);
     }
 
     function testGetCycleProgress() public view {
-        assertEq(cycleManager.getCycleProgress(), 0);
+        assertEq(cycleModule.getCycleProgress(), 0);
     }
 
     function testGetCycleProgressPartway() public {
         vm.roll(START_BLOCK + 50);
-        assertEq(cycleManager.getCycleProgress(), 50);
+        assertEq(cycleModule.getCycleProgress(), 50);
     }
 
     function testGetCycleProgressComplete() public {
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        assertEq(cycleManager.getCycleProgress(), 100);
+        assertEq(cycleModule.getCycleProgress(), 100);
     }
 
     function testUpdateCycleLength() public {
         uint256 newLength = 200;
-        cycleManager.updateCycleLength(newLength);
-        assertEq(cycleManager.cycleLength(), newLength);
+        cycleModule.updateCycleLength(newLength);
+        assertEq(cycleModule.cycleLength(), newLength);
     }
 
     function testCannotUpdateCycleLengthToZero() public {
-        vm.expectRevert(AbstractCycleManager.InvalidCycleLength.selector);
-        cycleManager.updateCycleLength(0);
+        vm.expectRevert(AbstractCycleModule.InvalidCycleLength.selector);
+        cycleModule.updateCycleLength(0);
     }
 
     function testUnauthorizedCannotUpdateCycleLength() public {
         vm.prank(user);
-        vm.expectRevert(AbstractCycleManager.NotAuthorized.selector);
-        cycleManager.updateCycleLength(200);
+        vm.expectRevert(AbstractCycleModule.NotAuthorized.selector);
+        cycleModule.updateCycleLength(200);
     }
 
     function testMultipleCycles() public {
         // Complete first cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH);
-        cycleManager.startNewCycle();
-        assertEq(cycleManager.getCurrentCycle(), 2);
+        cycleModule.startNewCycle();
+        assertEq(cycleModule.getCurrentCycle(), 2);
 
         // Complete second cycle
         vm.roll(START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
-        cycleManager.startNewCycle();
-        assertEq(cycleManager.getCurrentCycle(), 3);
+        cycleModule.startNewCycle();
+        assertEq(cycleModule.getCurrentCycle(), 3);
 
         // Verify cycle info
-        CycleManager.CycleInfo memory info = cycleManager.getCycleInfo();
+        CycleModule.CycleInfo memory info = cycleModule.getCycleInfo();
         assertEq(info.cycleNumber, 3);
         assertEq(info.startBlock, START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
     }

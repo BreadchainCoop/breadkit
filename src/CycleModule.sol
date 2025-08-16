@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./abstracts/AbstractCycleManager.sol";
+import "./abstracts/AbstractCycleModule.sol";
 
-/// @title CycleManager
-/// @notice Concrete implementation of the cycle management system
-/// @dev Extends AbstractCycleManager with any protocol-specific logic
-contract CycleManager is AbstractCycleManager {
-    /// @notice Initializes the CycleManager with fixed cycle parameters
+/// @title CycleModule
+/// @notice Concrete implementation of the cycle module
+/// @dev Extends AbstractCycleModule with any protocol-specific logic
+contract CycleModule is AbstractCycleModule {
+    /// @notice Initializes the CycleModule with fixed cycle parameters
     /// @param _cycleLength The length of each cycle in blocks
     /// @param _startBlock The block number to start counting from (0 for current block)
-    constructor(uint256 _cycleLength, uint256 _startBlock) AbstractCycleManager(_cycleLength, _startBlock) {}
+    constructor(uint256 _cycleLength, uint256 _startBlock) 
+        AbstractCycleModule(_cycleLength, _startBlock) 
+    {}
 
     /// @notice Override to add custom validation logic if needed
     /// @dev This example allows any valid cycle transition
@@ -19,7 +21,7 @@ contract CycleManager is AbstractCycleManager {
         // Additional custom validation can be added here
         // For example: checking if certain conditions are met
         // return someCustomCondition();
-
+        
         return true;
     }
 }

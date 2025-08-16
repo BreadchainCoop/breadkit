@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @title ICycleManager
-/// @notice Interface for the cycle management system
+/// @title ICycleModule
+/// @notice Interface for the cycle module
 /// @dev Simplified interface focusing only on cycle timing without distribution logic
-interface ICycleManager {
+interface ICycleModule {
     /// @notice Struct containing information about a cycle
     struct CycleInfo {
         uint256 cycleNumber;
