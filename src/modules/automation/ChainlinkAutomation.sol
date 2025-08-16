@@ -7,7 +7,9 @@ import "./AutomationBase.sol";
 /// @notice Chainlink Keeper compatible automation implementation
 /// @dev Implements Chainlink automation interface for yield distribution
 contract ChainlinkAutomation is AutomationBase {
-    constructor(address _cycleManager) AutomationBase(_cycleManager) {}
+    constructor(address _cycleManager, address _distributionManager)
+        AutomationBase(_cycleManager, _distributionManager)
+    {}
 
     /// @notice Chainlink-compatible upkeep check
     /// @dev Called by Chainlink nodes to check if work needs to be performed

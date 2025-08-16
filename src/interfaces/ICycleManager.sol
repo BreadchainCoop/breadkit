@@ -10,11 +10,6 @@ interface ICycleManager {
     /// @return execPayload The encoded function call data
     function getAutomationData() external view returns (bytes memory execPayload);
 
-    /// @notice Checks if the distribution is ready to be executed
-    /// @dev Contains all logic to determine if conditions are met
-    /// @return ready Whether the distribution conditions are met
-    function isDistributionReady() external view returns (bool ready);
-
     /// @notice Gets the number of blocks until the next cycle
     /// @return blocks The number of blocks remaining until the next cycle
     function getBlocksUntilNextCycle() external view returns (uint256 blocks);

@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../../src/modules/automation/ChainlinkAutomation.sol";
 import "../../src/modules/automation/GelatoAutomation.sol";
 import "../../src/mocks/MockCycleManager.sol";
+import "../../src/mocks/MockDistributionManager.sol";
 import "../../src/interfaces/IDistributionModule.sol";
 
 contract MockDistributionModule is IDistributionModule {
@@ -31,6 +32,7 @@ contract AutomationBaseTest is Test {
     ChainlinkAutomation public chainlinkAutomation;
     GelatoAutomation public gelatoAutomation;
     MockCycleManager public cycleManager;
+    MockDistributionManager public distributionManager;
     MockDistributionModule public distributionModule;
 
     address public chainlinkKeeper = address(0x1);
@@ -43,16 +45,20 @@ contract AutomationBaseTest is Test {
         // Deploy mock distribution module
         distributionModule = new MockDistributionModule();
 
-        // Deploy cycle manager with distribution logic
-        cycleManager = new MockCycleManager(address(distributionModule), 100);
+        // Deploy distribution manager
+        distributionManager = new MockDistributionManager(address(distributionModule), 100);
+
+        // Deploy cycle manager
+        cycleManager = new MockCycleManager(100);
+        cycleManager.setDistributionManager(address(distributionManager));
 
         // Deploy automation implementations
-        chainlinkAutomation = new ChainlinkAutomation(address(cycleManager));
-        gelatoAutomation = new GelatoAutomation(address(cycleManager));
+        chainlinkAutomation = new ChainlinkAutomation(address(cycleManager), address(distributionManager));
+        gelatoAutomation = new GelatoAutomation(address(cycleManager), address(distributionManager));
 
         // Setup initial state
-        cycleManager.setCurrentVotes(100);
-        cycleManager.setAvailableYield(2000);
+        distributionManager.setCurrentVotes(100);
+        distributionManager.setAvailableYield(2000);
     }
 
     function testChainlinkCheckUpkeep() public {
@@ -86,7 +92,7 @@ contract AutomationBaseTest is Test {
 
         // Verify distribution was called
         assertEq(distributionModule.distributeCallCount(), 1);
-        assertEq(cycleManager.currentCycleNumber(), 2);
+        assertEq(distributionManager.currentCycleNumber(), 2);
     }
 
     function testGelatoChecker() public {
@@ -120,7 +126,7 @@ contract AutomationBaseTest is Test {
 
         // Verify distribution was called
         assertEq(distributionModule.distributeCallCount(), 1);
-        assertEq(cycleManager.currentCycleNumber(), 2);
+        assertEq(distributionManager.currentCycleNumber(), 2);
     }
 
     function testResolveDistributionConditions() public {
@@ -131,24 +137,24 @@ contract AutomationBaseTest is Test {
         vm.roll(block.number + 101);
 
         // Test: No votes
-        cycleManager.setCurrentVotes(0);
+        distributionManager.setCurrentVotes(0);
         isReady = chainlinkAutomation.isDistributionReady();
         assertFalse(isReady);
 
         // Test: Insufficient yield
-        cycleManager.setCurrentVotes(100);
-        cycleManager.setAvailableYield(500);
+        distributionManager.setCurrentVotes(100);
+        distributionManager.setAvailableYield(500);
         isReady = chainlinkAutomation.isDistributionReady();
         assertFalse(isReady);
 
         // Test: System disabled
-        cycleManager.setAvailableYield(2000);
-        cycleManager.setEnabled(false);
+        distributionManager.setAvailableYield(2000);
+        distributionManager.setEnabled(false);
         isReady = chainlinkAutomation.isDistributionReady();
         assertFalse(isReady);
 
         // Test: All conditions met
-        cycleManager.setEnabled(true);
+        distributionManager.setEnabled(true);
         isReady = chainlinkAutomation.isDistributionReady();
         assertTrue(isReady);
 
@@ -165,19 +171,19 @@ contract AutomationBaseTest is Test {
 
     function testCycleManagerIntegration() public {
         // Check initial state
-        assertEq(cycleManager.currentCycleNumber(), 1);
-        assertEq(cycleManager.currentVotes(), 100);
-        assertEq(cycleManager.availableYield(), 2000);
+        assertEq(distributionManager.currentCycleNumber(), 1);
+        assertEq(distributionManager.currentVotes(), 100);
+        assertEq(distributionManager.availableYield(), 2000);
 
         // Advance and execute
         vm.roll(block.number + 101);
         chainlinkAutomation.executeDistribution();
 
         // Check state after execution
-        assertEq(cycleManager.currentCycleNumber(), 2);
-        assertEq(cycleManager.currentVotes(), 0); // Reset after distribution
-        assertEq(cycleManager.availableYield(), 0); // Reset after distribution
-        assertEq(cycleManager.getLastDistributionBlock(), block.number);
+        assertEq(distributionManager.currentCycleNumber(), 2);
+        assertEq(distributionManager.currentVotes(), 0); // Reset after distribution
+        assertEq(distributionManager.availableYield(), 0); // Reset after distribution
+        assertEq(distributionManager.getLastDistributionBlock(), block.number);
     }
 
     function testGetBlocksUntilNextCycle() public {
@@ -194,7 +200,7 @@ contract AutomationBaseTest is Test {
     }
 
     function testCycleInfo() public {
-        (uint256 cycleNum, uint256 startBlock, uint256 endBlock) = cycleManager.getCycleInfo();
+        (uint256 cycleNum, uint256 startBlock, uint256 endBlock) = distributionManager.getCycleInfo();
         assertEq(cycleNum, 1);
         assertEq(startBlock, block.number);
         assertEq(endBlock, block.number + 100);
@@ -204,7 +210,7 @@ contract AutomationBaseTest is Test {
         chainlinkAutomation.executeDistribution();
 
         // Check updated cycle info
-        (cycleNum, startBlock, endBlock) = cycleManager.getCycleInfo();
+        (cycleNum, startBlock, endBlock) = distributionManager.getCycleInfo();
         assertEq(cycleNum, 2);
         assertEq(startBlock, block.number);
         assertEq(endBlock, block.number + 100);
@@ -213,8 +219,8 @@ contract AutomationBaseTest is Test {
     function testBothAutomationTypesWork() public {
         // Test Chainlink automation
         vm.roll(block.number + 101);
-        cycleManager.setCurrentVotes(100);
-        cycleManager.setAvailableYield(2000);
+        distributionManager.setCurrentVotes(100);
+        distributionManager.setAvailableYield(2000);
 
         vm.prank(chainlinkKeeper);
         chainlinkAutomation.performUpkeep("");
@@ -222,8 +228,8 @@ contract AutomationBaseTest is Test {
 
         // Test Gelato automation
         vm.roll(block.number + 101);
-        cycleManager.setCurrentVotes(100);
-        cycleManager.setAvailableYield(2000);
+        distributionManager.setCurrentVotes(100);
+        distributionManager.setAvailableYield(2000);
 
         vm.prank(gelatoExecutor);
         gelatoAutomation.execute("");
@@ -234,12 +240,12 @@ contract AutomationBaseTest is Test {
         vm.roll(block.number + 101);
 
         // Set yield below minimum
-        cycleManager.setAvailableYield(999);
+        distributionManager.setAvailableYield(999);
         bool isReady = chainlinkAutomation.isDistributionReady();
         assertFalse(isReady);
 
         // Set yield at minimum
-        cycleManager.setAvailableYield(1000);
+        distributionManager.setAvailableYield(1000);
         isReady = chainlinkAutomation.isDistributionReady();
         assertTrue(isReady);
     }

@@ -2,91 +2,44 @@
 pragma solidity ^0.8.20;
 
 import "../interfaces/ICycleManager.sol";
-import "../interfaces/IDistributionModule.sol";
+import "../interfaces/IDistributionManager.sol";
 
 /// @title MockCycleManager
-/// @notice Mock implementation of ICycleManager with all distribution logic
-/// @dev Contains all the logic for determining when and how to distribute yield
+/// @notice Mock implementation of ICycleManager for cycle management
+/// @dev Manages cycle timing and provides automation data
 contract MockCycleManager is ICycleManager {
-    IDistributionModule public immutable distributionModule;
-
     uint256 public cycleLength;
     uint256 public lastDistributionBlock;
     uint256 public currentCycleNumber;
-    uint256 public currentVotes;
-    uint256 public minYieldRequired;
-    uint256 public availableYield;
 
-    bool public isEnabled = true;
+    address public distributionManager;
 
-    event DistributionExecuted(uint256 blockNumber, uint256 yield, uint256 votes);
-
-    constructor(address _distributionModule, uint256 _cycleLength) {
-        require(_distributionModule != address(0), "Invalid distribution module");
-        distributionModule = IDistributionModule(_distributionModule);
+    constructor(uint256 _cycleLength) {
         cycleLength = _cycleLength;
         lastDistributionBlock = block.number;
         currentCycleNumber = 1;
-        minYieldRequired = 1000; // Example minimum yield
+    }
+
+    function setDistributionManager(address _distributionManager) external {
+        distributionManager = _distributionManager;
     }
 
     /// @notice Gets the automation data for execution
     /// @dev Returns encoded function call data for automation providers
     function getAutomationData() external view override returns (bytes memory execPayload) {
-        // Return the execution payload if conditions are met
-        if (isDistributionReady()) {
-            return abi.encodeWithSelector(this.executeDistribution.selector);
+        // Return the execution payload for the distribution manager
+        if (distributionManager != address(0)) {
+            return abi.encodeWithSelector(IDistributionManager.executeDistribution.selector);
         }
         return new bytes(0);
     }
 
-    /// @notice Executes the distribution
-    /// @dev Handles all distribution logic
-    function executeDistribution() external {
-        // Verify conditions again
-        require(block.number >= lastDistributionBlock + cycleLength, "Too soon");
-        require(currentVotes > 0, "No votes");
-        require(availableYield >= minYieldRequired, "Insufficient yield");
-        require(isEnabled, "System disabled");
-
-        // Update state
+    /// @notice Updates the last distribution block
+    /// @dev Called by distribution manager after successful distribution
+    function updateLastDistributionBlock() external {
+        require(msg.sender == distributionManager, "Only distribution manager");
         lastDistributionBlock = block.number;
         currentCycleNumber++;
-
-        // Call distribution module to handle the actual distribution
-        distributionModule.distribute();
-
-        // Emit event
-        emit DistributionExecuted(block.number, availableYield, currentVotes);
-
-        // Reset for next cycle
-        currentVotes = 0;
-        availableYield = 0;
-    }
-
-    /// @notice Checks if distribution is ready
-    function isDistributionReady() public view override returns (bool ready) {
-        // Check if enough blocks have passed
-        if (block.number < lastDistributionBlock + cycleLength) {
-            return false;
-        }
-
-        // Check if there are votes
-        if (currentVotes == 0) {
-            return false;
-        }
-
-        // Check if there's sufficient yield
-        if (availableYield < minYieldRequired) {
-            return false;
-        }
-
-        // Check if system is enabled
-        if (!isEnabled) {
-            return false;
-        }
-
-        return true;
     }
 
     /// @notice Gets blocks until next cycle
@@ -128,22 +81,5 @@ contract MockCycleManager is ICycleManager {
     /// @notice Gets the last distribution block
     function getLastDistributionBlock() external view override returns (uint256) {
         return lastDistributionBlock;
-    }
-
-    // Mock functions for testing
-    function setCurrentVotes(uint256 _votes) external {
-        currentVotes = _votes;
-    }
-
-    function setAvailableYield(uint256 _yield) external {
-        availableYield = _yield;
-    }
-
-    function setEnabled(bool _enabled) external {
-        isEnabled = _enabled;
-    }
-
-    function setMinYieldRequired(uint256 _minYield) external {
-        minYieldRequired = _minYield;
     }
 }

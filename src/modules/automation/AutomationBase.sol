@@ -2,27 +2,31 @@
 pragma solidity ^0.8.20;
 
 import "../../interfaces/ICycleManager.sol";
+import "../../interfaces/IDistributionManager.sol";
 
 /// @title AutomationBase
 /// @notice Abstract base contract for automation providers
 /// @dev Inherit this contract to create provider-specific automation implementations
-abstract contract AutomationBase {
+abstract contract AutomationBase is IDistributionManager {
     ICycleManager public immutable cycleManager;
+    IDistributionManager public immutable distributionManager;
 
     event AutomationExecuted(address indexed executor, uint256 blockNumber);
 
     error NotResolved();
 
-    constructor(address _cycleManager) {
+    constructor(address _cycleManager, address _distributionManager) {
         require(_cycleManager != address(0), "Invalid cycle manager");
+        require(_distributionManager != address(0), "Invalid distribution manager");
         cycleManager = ICycleManager(_cycleManager);
+        distributionManager = IDistributionManager(_distributionManager);
     }
 
     /// @notice Checks if distribution is ready
-    /// @dev Delegates to CycleManager for condition checking
+    /// @dev Delegates to DistributionManager for condition checking
     /// @return ready Whether the distribution conditions are met
-    function isDistributionReady() public view virtual returns (bool ready) {
-        return cycleManager.isDistributionReady();
+    function isDistributionReady() public view virtual override returns (bool ready) {
+        return distributionManager.isDistributionReady();
     }
 
     /// @notice Gets the automation data for execution
@@ -33,16 +37,11 @@ abstract contract AutomationBase {
     }
 
     /// @notice Executes the distribution
-    /// @dev Executes the automation payload directly
-    function executeDistribution() public virtual {
+    /// @dev Delegates to DistributionManager for execution
+    function executeDistribution() public virtual override {
         if (!isDistributionReady()) revert NotResolved();
 
-        bytes memory payload = getAutomationData();
-        require(payload.length > 0, "No execution payload");
-
-        // Execute the payload on the cycle manager
-        (bool success, bytes memory returnData) = address(cycleManager).call(payload);
-        require(success, string(returnData));
+        distributionManager.executeDistribution();
 
         emit AutomationExecuted(msg.sender, block.number);
     }
