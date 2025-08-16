@@ -48,26 +48,27 @@ contract CycleManager is ICycleManager {
     }
 
     /// @inheritdoc ICycleManager
-    function isDistributionReady(
-        uint256 votesCast,
-        uint256 availableYield,
-        uint256 minimumYield
-    ) external view cycleModuleSet returns (bool) {
+    function isDistributionReady(uint256 votesCast, uint256 availableYield, uint256 minimumYield)
+        external
+        view
+        cycleModuleSet
+        returns (bool)
+    {
         // Check cycle timing via cycle module
         if (!cycleModule.isDistributionReady()) {
             return false;
         }
-        
+
         // Check voting activity
         if (votesCast == 0) {
             return false;
         }
-        
+
         // Check sufficient yield
         if (availableYield < minimumYield) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -76,22 +77,18 @@ contract CycleManager is ICycleManager {
         if (!validateCycleTransition()) {
             revert InvalidCycleTransition();
         }
-        
+
         // Store cycle history before transition
         uint256 currentCycleNumber = cycleModule.getCurrentCycle();
         cycleHistory[currentCycleNumber] = cycleModule.getCycleInfo();
-        
+
         // Delegate cycle management to the cycle module
         cycleModule.startNewCycle();
-        
+
         // Get new cycle info
         CycleInfo memory newCycleInfo = cycleModule.getCycleInfo();
-        
-        emit CycleStarted(
-            newCycleInfo.cycleNumber,
-            newCycleInfo.startBlock,
-            newCycleInfo.endBlock
-        );
+
+        emit CycleStarted(newCycleInfo.cycleNumber, newCycleInfo.startBlock, newCycleInfo.endBlock);
         emit CycleTransitionValidated(newCycleInfo.cycleNumber);
     }
 
@@ -103,10 +100,10 @@ contract CycleManager is ICycleManager {
     /// @inheritdoc ICycleManager
     function setCycleModule(address _cycleModule) external onlyAuthorized {
         require(_cycleModule != address(0), "Invalid cycle module address");
-        
+
         address oldModule = address(cycleModule);
         cycleModule = ICycleModule(_cycleModule);
-        
+
         emit CycleModuleUpdated(oldModule, _cycleModule);
     }
 

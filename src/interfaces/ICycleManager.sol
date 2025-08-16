@@ -38,11 +38,10 @@ interface ICycleManager {
     /// @param availableYield The amount of yield available for distribution
     /// @param minimumYield The minimum yield required for distribution
     /// @return Whether distribution is ready
-    function isDistributionReady(
-        uint256 votesCast,
-        uint256 availableYield,
-        uint256 minimumYield
-    ) external view returns (bool);
+    function isDistributionReady(uint256 votesCast, uint256 availableYield, uint256 minimumYield)
+        external
+        view
+        returns (bool);
 
     /// @notice Starts a new cycle
     /// @dev Only callable by authorized contracts
