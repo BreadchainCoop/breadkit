@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test} from "forge-std/Test.sol";
-import {console2} from "forge-std/console2.sol";
+import {Test, console2} from "forge-std/Test.sol";
 import {DistributionStrategyModule} from "../src/modules/DistributionStrategyModule.sol";
 import {StrategyCalculator} from "../src/modules/StrategyCalculator.sol";
 import {StrategyRecipientManager} from "../src/modules/StrategyRecipientManager.sol";
