@@ -70,7 +70,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         uint256 totalYield = yieldToken.balanceOf(address(this));
         if (totalYield == 0) revert InsufficientYield();
 
-        (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateDistribution(totalYield);
+        (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateSplit(totalYield);
 
         if (fixedAmount > 0 && projects.length > 0) {
             _distributeFixedPortion(fixedAmount);
@@ -149,7 +149,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
 
         if (address(strategyModule) != address(0)) {
-            strategyModule.updateDistributionStrategy(_yieldFixedSplitDivisor);
+            strategyModule.updateSplitRatio(_yieldFixedSplitDivisor);
         }
 
         emit YieldFixedSplitDivisorUpdated(_yieldFixedSplitDivisor);
@@ -174,7 +174,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     function setStrategyModule(address _strategyModule) external onlyOwner {
         if (_strategyModule == address(0)) revert ZeroAddress();
         strategyModule = IDistributionStrategyModule(_strategyModule);
-        strategyModule.updateDistributionStrategy(yieldFixedSplitDivisor);
+        strategyModule.updateSplitRatio(yieldFixedSplitDivisor);
     }
 
     /// @notice Adds a project to receive distributions
