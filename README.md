@@ -288,40 +288,77 @@ sequenceDiagram
 ```
 
 ### Voting Module
-**Purpose**: Handles all voting operations and power calculations
+**Purpose**: Handles all voting operations and power calculations with signature-based gasless voting
 
-**Problem Statement**: Democratic resource allocation requires a fair voting system that accurately represents community member participation. Key challenges include preventing vote manipulation, ensuring votes are weighted appropriately based on token holdings, managing vote changes within cycles, and integrating various incentive mechanisms without compromising the integrity of the voting process.
+**Problem Statement**: Democratic resource allocation requires a fair voting system that accurately represents community member participation. Key challenges include preventing vote manipulation, ensuring votes are weighted appropriately based on token holdings, managing vote changes within cycles, enabling gasless voting through signatures, and integrating various incentive mechanisms without compromising the integrity of the voting process.
+
+**📚 Documentation**: See [VotingModuleSignatures.md](documentation/VotingModuleSignatures.md) for detailed signature generation examples and implementation guidance.
 
 ```mermaid
 classDiagram
     class VotingModule {
         +uint256 maxPoints
         +mapping voterDistributions
+        +mapping usedNonces
         +castVote(points[])
+        +castVoteWithSignature(voter, points[], nonce, signature)
+        +castBatchVotesWithSignature(voters[], points[][], nonces[], signatures[])
         +getCurrentVotingPower(account) returns(uint256)
         +getAccumulatedVotingPower(account) returns(uint256)
+        +getTotalVotingPower(voter) returns(uint256)
         +validateVotePoints(points[])
+        +validateSignature(voter, points[], nonce, signature) returns(bool)
+        +DOMAIN_SEPARATOR() returns(bytes32)
     }
     
+    class IVotingPowerStrategy {
+        <<interface>>
+        +getCurrentVotingPower(account) returns(uint256)
+        +getAccumulatedVotingPower(account) returns(uint256)
+    }
+    
+    class TokenBasedVotingPower {
+        +getCurrentVotingPower(account) returns(uint256)
+        +getAccumulatedVotingPower(account) returns(uint256)
+    }
+    
+    class TimeWeightedVotingPower {
+        +getVotingPowerForPeriod(account, start, end) returns(uint256)
+        +getCurrentVotingPower(account) returns(uint256)
+        +getAccumulatedVotingPower(account) returns(uint256)
+    }
+    
+    VotingModule --> IVotingPowerStrategy : uses multiple
     VotingModule --> BaseToken : reads balances
+    TokenBasedVotingPower ..|> IVotingPowerStrategy : implements
+    TimeWeightedVotingPower ..|> IVotingPowerStrategy : implements
 ```
 
 **Components**:
 - **Vote Casting**: Process user votes with point allocation
 - **Power Calculator**: Computes voting power from token balances
+- **Signature Verifier**: Validates EIP-712 signatures for gasless voting
+- **Strategy Manager**: Aggregates voting power from multiple sources
 
 **Features**:
 - Point-based voting system with validation
-- Multi-source voting power calculation
+- **EIP-712 signature-based gasless voting** (see [documentation/VotingModuleSignatures.md](documentation/VotingModuleSignatures.md))
+- **Batch voting operations for gas efficiency**
+- **Flexible nonce management (allows skipping)**
+- Multi-source voting power calculation via strategies
 - Vote recasting within active cycles
 - Historical voting power tracking
 - Vote point validation and distribution
+- Meta-transaction support for true gasless voting
 
 **Functional Requirements:**
 - MUST allow users to allocate voting points to recipients
 - MUST validate total points do not exceed maxPoints per recipient
 - MUST calculate voting power from token balances
 - MUST support vote recasting within same cycle
+- MUST verify EIP-712 signatures for gasless voting
+- MUST prevent replay attacks via nonce management
+- MUST support batch vote submission
 
 **Technical Requirements:**
 - Historical voting power tracking via checkpoints
