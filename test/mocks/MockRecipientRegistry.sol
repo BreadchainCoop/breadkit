@@ -87,7 +87,8 @@ contract MockRecipientRegistry is IRecipientRegistry {
         delete queuedRemovals;
     }
 
-    function validateRecipient(address recipient) external view override returns (bool) {
+    // Internal validation function (not part of interface)
+    function validateRecipient(address recipient) external view returns (bool) {
         return recipient != address(0);
     }
 

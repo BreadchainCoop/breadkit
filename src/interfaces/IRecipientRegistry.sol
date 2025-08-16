@@ -13,11 +13,6 @@ interface IRecipientRegistry {
     /// @return The count of active recipients
     function getActiveRecipientsCount() external view returns (uint256);
 
-    /// @notice Validates if a recipient address is valid
-    /// @param recipient The address to validate
-    /// @return True if the recipient is valid
-    function validateRecipient(address recipient) external view returns (bool);
-
     /// @notice Gets metadata for a specific recipient
     /// @param recipient The recipient address
     /// @return name The recipient's name
