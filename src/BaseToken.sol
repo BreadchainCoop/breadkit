@@ -79,6 +79,7 @@ abstract contract BaseToken is ERC20VotesUpgradeable, Ownable, IBreadKitToken {
         if (msg.sender != yieldClaimer) revert OnlyClaimer();
         if (amount_ == 0) revert ClaimZero();
         uint256 yield = _yieldAccrued();
+        if (yield == 0) revert YieldInsufficient();
         if (yield < amount_) revert YieldInsufficient();
 
         _mint(receiver_, amount_);
