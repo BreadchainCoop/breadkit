@@ -20,7 +20,7 @@ contract CycleManagerTest is Test {
         module.initialize(10, 0);
         // grant authorization and set cycle module
         manager.setAuthorization(auth, true);
-        vm.prank(auth);        
+        vm.prank(auth);
         manager.setCycleModule(address(module));
     }
 
@@ -119,5 +119,3 @@ contract CycleManagerTest is Test {
         assertTrue(manager.isDistributionReady(1, 1, 1));
     }
 }
-
-

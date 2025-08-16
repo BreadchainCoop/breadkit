@@ -31,6 +31,7 @@ contract CycleManager is ICycleManager {
     /// @notice Emitted when an address authorization status changes
     /// @param account The address whose authorization was updated
     /// @param isAuthorized The new authorization status
+
     event AuthorizationUpdated(address indexed account, bool isAuthorized);
 
     /// @notice Initializes the contract and authorizes the deployer
@@ -38,7 +39,6 @@ contract CycleManager is ICycleManager {
         authorized[msg.sender] = true;
         emit AuthorizationUpdated(msg.sender, true);
     }
-
 
     /// @notice Modifier to restrict access to authorized addresses
     modifier onlyAuthorized() {

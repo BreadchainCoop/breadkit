@@ -109,5 +109,3 @@ contract FixedCycleModuleTest is Test {
         assertEq(module.getBlocksUntilNextCycle(), 15);
     }
 }
-
-
