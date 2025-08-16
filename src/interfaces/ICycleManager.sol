@@ -16,6 +16,7 @@ interface ICycleManager {
     function executeDistribution() external;
 
     /// @notice Checks if the distribution is ready to be executed
+    /// @dev Internally uses resolveDistribution() to avoid logic duplication
     /// @return ready Whether the distribution conditions are met
     function isDistributionReady() external view returns (bool ready);
 

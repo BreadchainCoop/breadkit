@@ -67,7 +67,6 @@ contract MockCycleManager is ICycleManager {
         require(isEnabled, "System disabled");
 
         // Update state
-        uint256 previousBlock = lastDistributionBlock;
         lastDistributionBlock = block.number;
         currentCycleNumber++;
 
@@ -84,8 +83,8 @@ contract MockCycleManager is ICycleManager {
 
     /// @notice Checks if distribution is ready
     function isDistributionReady() external view override returns (bool ready) {
-        return block.number >= lastDistributionBlock + cycleLength && currentVotes > 0
-            && availableYield >= minYieldRequired && isEnabled;
+        (bool canExec,) = this.resolveDistribution();
+        return canExec;
     }
 
     /// @notice Gets blocks until next cycle
