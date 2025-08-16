@@ -42,7 +42,7 @@ contract MockCycleManager is ICycleManager {
 
     /// @notice Executes the distribution
     /// @dev Handles all distribution logic
-    function executeDistribution() external override {
+    function executeDistribution() external {
         // Verify conditions again
         require(block.number >= lastDistributionBlock + cycleLength, "Too soon");
         require(currentVotes > 0, "No votes");

@@ -33,11 +33,16 @@ abstract contract AutomationBase {
     }
 
     /// @notice Executes the distribution
-    /// @dev Calls CycleManager to handle all distribution logic
+    /// @dev Executes the automation payload directly
     function executeDistribution() public virtual {
         if (!isDistributionReady()) revert NotResolved();
 
-        cycleManager.executeDistribution();
+        bytes memory payload = getAutomationData();
+        require(payload.length > 0, "No execution payload");
+
+        // Execute the payload on the cycle manager
+        (bool success, bytes memory returnData) = address(cycleManager).call(payload);
+        require(success, string(returnData));
 
         emit AutomationExecuted(msg.sender, block.number);
     }
