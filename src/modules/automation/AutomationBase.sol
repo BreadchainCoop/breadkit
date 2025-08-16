@@ -26,10 +26,14 @@ abstract contract AutomationBase is IDistributionManager {
     }
 
     /// @notice Gets the automation data for execution
-    /// @dev Delegates to DistributionManager for payload generation
+    /// @dev Returns encoded function call data for automation providers
     /// @return execPayload The encoded function call data
-    function getAutomationData() public view virtual override returns (bytes memory execPayload) {
-        return distributionManager.getAutomationData();
+    function getAutomationData() public view virtual returns (bytes memory execPayload) {
+        // Default implementation: return encoded call to executeDistribution
+        if (isDistributionReady()) {
+            return abi.encodeWithSelector(this.executeDistribution.selector);
+        }
+        return new bytes(0);
     }
 
     /// @notice Executes the distribution
