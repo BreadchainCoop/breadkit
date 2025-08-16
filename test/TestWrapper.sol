@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 contract TestWrapper is Test {
     constructor() {
         string memory rpcUrl = vm.envString("ETH_RPC_URL");
-        
+
         // Try to use ETH_BLOCK_NUMBER from env if provided, otherwise use latest
         uint256 blockNumber;
         try vm.envUint("ETH_BLOCK_NUMBER") returns (uint256 envBlockNumber) {
@@ -15,7 +15,7 @@ contract TestWrapper is Test {
             // If ETH_BLOCK_NUMBER is not set, fork at the latest block
             blockNumber = 0; // 0 means latest block in Foundry
         }
-        
+
         if (blockNumber == 0) {
             // Fork at latest block
             vm.createSelectFork(rpcUrl);
