@@ -59,6 +59,15 @@ contract CycleManagerTest is Test {
         // Become ready
         vm.roll(block.number + 10);
 
+        // Distribution must be marked as completed first
+        vm.prank(auth);
+        vm.expectRevert(CycleManager.DistributionNotCompleted.selector);
+        manager.startNewCycle();
+
+        // Mark distribution completed
+        vm.prank(auth);
+        manager.markDistributionCompleted();
+
         // Capture pre-transition info to compare history storage
         ICycleManager.CycleInfo memory beforeInfo = manager.getCycleInfo();
 
@@ -86,6 +95,8 @@ contract CycleManagerTest is Test {
         assertEq(infoBefore.cycleNumber, 1);
 
         vm.roll(block.number + 10);
+        vm.prank(auth);
+        manager.markDistributionCompleted();
         vm.prank(auth);
         manager.startNewCycle();
 

@@ -17,6 +17,9 @@ contract CycleManager is ICycleManager {
     /// @notice Historical record of cycle transitions
     mapping(uint256 => CycleInfo) public cycleHistory;
 
+    /// @notice Tracks whether distribution has been completed for the current cycle
+    bool public distributionCompletedForCurrentCycle;
+
     /// @notice Error thrown when caller is not authorized
     error NotAuthorized();
 
@@ -25,6 +28,9 @@ contract CycleManager is ICycleManager {
 
     /// @notice Error thrown when cycle transition is invalid
     error InvalidCycleTransition();
+
+    /// @notice Error thrown when attempting to start a new cycle before distribution is completed
+    error DistributionNotCompleted();
     /// @notice Emitted when an address authorization status changes
     /// @param account The address whose authorization was updated
     /// @param isAuthorized The new authorization status
@@ -97,12 +103,19 @@ contract CycleManager is ICycleManager {
             revert InvalidCycleTransition();
         }
 
+        if (!distributionCompletedForCurrentCycle) {
+            revert DistributionNotCompleted();
+        }
+
         // Store cycle history before transition
         uint256 currentCycleNumber = cycleModule.getCurrentCycle();
         cycleHistory[currentCycleNumber] = cycleModule.getCycleInfo();
 
         // Delegate cycle management to the cycle module
         cycleModule.startNewCycle();
+
+        // Reset distribution flag for the next cycle
+        distributionCompletedForCurrentCycle = false;
 
         // Get new cycle info
         CycleInfo memory newCycleInfo = cycleModule.getCycleInfo();
@@ -130,5 +143,11 @@ contract CycleManager is ICycleManager {
     function validateCycleTransition() public view cycleModuleSet returns (bool) {
         // Basic validation that the cycle module is ready for transition
         return cycleModule.isDistributionReady();
+    }
+
+    /// @notice Marks that distribution for the current cycle has been completed
+    /// @dev Should be called by the distribution module after successful distribution
+    function markDistributionCompleted() external onlyAuthorized {
+        distributionCompletedForCurrentCycle = true;
     }
 }
