@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IVotingPowerStrategy} from "./IVotingPowerStrategy.sol";
+
 /// @title IVotingModule
-/// @notice Interface for the voting module that manages project voting
+/// @notice Interface for the voting module that manages project voting with signature-based voting
 /// @dev This module is responsible for handling voting on projects and tracking voting power
 interface IVotingModule {
     /// @notice Submits a vote with points for each project
@@ -66,4 +68,80 @@ interface IVotingModule {
     /// @dev This determines the maximum number of points a user can allocate in a vote
     /// @param maxPoints The maximum number of points allowed
     function setMaxPoints(uint256 maxPoints) external;
+
+    /// @notice Casts a vote with a signature
+    /// @dev Allows off-chain vote preparation with on-chain submission using EIP-712 signatures
+    /// @param voter The address of the voter
+    /// @param points Array of points allocated to each project
+    /// @param nonce The nonce for replay protection
+    /// @param signature The EIP-712 signature
+    function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        external;
+
+    /// @notice Casts multiple votes with signatures in a single transaction
+    /// @dev Batch operation for efficient vote submission
+    /// @param voters Array of voter addresses
+    /// @param points Array of points arrays for each voter
+    /// @param nonces Array of nonces for each voter
+    /// @param signatures Array of signatures for each voter
+    function castBatchVotesWithSignature(
+        address[] calldata voters,
+        uint256[][] calldata points,
+        uint256[] calldata nonces,
+        bytes[] calldata signatures
+    ) external;
+
+    /// @notice Validates vote points distribution
+    /// @dev Checks if the points distribution is valid according to module rules
+    /// @param points Array of points to validate
+    /// @return True if points are valid, false otherwise
+    function validateVotePoints(uint256[] calldata points) external view returns (bool);
+
+    /// @notice Validates a vote signature
+    /// @dev Verifies that a signature is valid for the given vote parameters
+    /// @param voter The address of the voter
+    /// @param points Array of points allocated to each project
+    /// @param nonce The nonce for replay protection
+    /// @param signature The signature to validate
+    /// @return True if signature is valid, false otherwise
+    function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        external
+        view
+        returns (bool);
+
+    /// @notice Gets the total voting power from all strategies
+    /// @dev Aggregates voting power from all configured strategies
+    /// @param voter The address to check voting power for
+    /// @return The total voting power from all strategies
+    function getTotalVotingPower(address voter) external view returns (uint256);
+
+    /// @notice Gets the voter's distribution for a specific cycle
+    /// @dev Returns how a voter allocated their points in a given cycle
+    /// @param account The voter's address
+    /// @param cycle The cycle number to query
+    /// @return Array of point allocations for the cycle
+    function getVoterDistribution(address account, uint256 cycle) external view returns (uint256[] memory);
+
+    /// @notice Gets the total voting power for a specific cycle
+    /// @dev Returns the total voting power used in a specific cycle
+    /// @param cycle The cycle number to query
+    /// @return The total voting power for the cycle
+    function getTotalVotingPowerForCycle(uint256 cycle) external view returns (uint256);
+
+    /// @notice Returns the EIP-712 domain separator
+    /// @dev Used for signature verification
+    /// @return The domain separator hash
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+
+    /// @notice Checks if a nonce has been used for a voter
+    /// @dev Used to prevent replay attacks
+    /// @param voter The voter's address
+    /// @param nonce The nonce to check
+    /// @return True if the nonce has been used, false otherwise
+    function isNonceUsed(address voter, uint256 nonce) external view returns (bool);
+
+    /// @notice Gets all voting power strategies
+    /// @dev Returns the array of configured voting power strategies
+    /// @return Array of voting power strategy contracts
+    function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
 }
