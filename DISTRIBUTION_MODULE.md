@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Distribution Module is the central orchestrating component that handles yield distribution. It consolidates all distribution logic in an abstract contract that can be extended and integrated with other modules.
+The Distribution Module is the central orchestrating component that handles yield distribution and collection. It consolidates all distribution and yield collection logic in a single abstract contract that can be extended and integrated with voting and recipient management modules.
 
 ## Architecture
 
@@ -14,34 +14,36 @@ The Distribution Module is the central orchestrating component that handles yiel
    - Event definitions for transparency
 
 2. **DistributionManager** (`src/modules/DistributionManager.sol`)
-   - Abstract contract with ALL distribution logic consolidated
+   - Abstract contract with ALL distribution and yield collection logic
    - Calculation and execution algorithms
-   - Virtual hooks for module integration
-   - Emergency mechanisms
-
-3. **YieldCollector** (`src/modules/YieldCollector.sol`)
-   - Single-source yield collection utility
+   - Built-in yield collection from single source
    - Token minting coordination
-   - Source validation and monitoring
+   - Virtual hooks for voting and recipient management
+   - Emergency mechanisms
 
 ## Key Features
 
 ### Distribution Process
 1. **Validation** - Cycle completion, yield availability, votes
-2. **Token Minting** - Hook for minting before collection  
-3. **Yield Collection** - Hook for collecting from sources
+2. **Token Minting** - Built-in minting before collection  
+3. **Yield Collection** - Built-in collection from single source
 4. **Split Calculation** - Fixed and voted portions
 5. **Distribution Execution** - Transfer to recipients
 6. **Cycle Transition** - State updates for next cycle
 
 ### Abstract Hooks
 The DistributionManager provides hooks that implementations must override:
-- `_mintTokensBeforeDistribution()` - Token minting logic
-- `_collectYield()` - Yield collection logic
-- `_getAvailableYield()` - Available yield calculation
+- `_mintTokensBeforeDistribution()` - Optional: Custom token minting logic (has default implementation)
 - `_getVotingResults()` - Voting data retrieval
 - `_getActiveRecipients()` - Recipient list retrieval
 - `_processQueuedChanges()` - Queue processing logic
+
+### Built-in Functionality
+The DistributionManager includes concrete implementations for:
+- Yield collection from single source
+- Token minting before distribution
+- Available yield calculation
+- Yield source validation
 
 ### Security Features
 - Reentrancy protection
@@ -59,27 +61,14 @@ contract MyDistribution is DistributionManager {
     
     function initialize(
         address _yieldToken,
+        address _yieldSource,
         uint256 _cycleLength,
         uint256 _yieldFixedSplitDivisor
     ) external {
-        __DistributionManager_init(_yieldToken, _cycleLength, _yieldFixedSplitDivisor);
+        __DistributionManager_init(_yieldToken, _yieldSource, _cycleLength, _yieldFixedSplitDivisor);
     }
 
     // Implement required hooks
-    function _mintTokensBeforeDistribution() internal override {
-        // Your minting logic
-    }
-
-    function _collectYield() internal override returns (uint256) {
-        // Your yield collection logic
-        return collectedAmount;
-    }
-
-    function _getAvailableYield() internal view override returns (uint256) {
-        // Your available yield logic
-        return availableAmount;
-    }
-
     function _getVotingResults() internal view override returns (uint256[] memory) {
         // Your voting integration
         return votes;
@@ -93,29 +82,41 @@ contract MyDistribution is DistributionManager {
     function _processQueuedChanges() internal override {
         // Your queue processing logic
     }
+
+    // Optional: Override for custom token minting
+    function _mintTokensBeforeDistribution() internal override {
+        // Custom minting logic if needed
+        // Default implementation handles most cases
+        super._mintTokensBeforeDistribution();
+    }
 }
 ```
 
-### Using YieldCollector
+### Managing Yield Source
 
 ```solidity
-YieldCollector collector = new YieldCollector(yieldTokenAddress, yieldSourceAddress);
-collector.setDistributionManager(distributionAddress);
+// Yield source is set during initialization
+MyDistribution distribution = new MyDistribution();
+distribution.initialize(yieldToken, yieldSource, cycleLength, divisor);
 
-// Optionally change yield source
-collector.setYieldSource(newYieldSource);
+// Change yield source if needed
+distribution.setYieldSource(newYieldSource);
 
-// Collect yield (called by distribution manager)
-uint256 collected = collector.collectYield();
+// Check yield source validity
+bool isValid = distribution.validateYieldSource();
+
+// Get current yield source
+address currentSource = distribution.getYieldSource();
 ```
 
 ## Testing
 
 Test suite in `test/DistributionModule.t.sol` covers:
-- Distribution execution
+- Distribution execution with integrated yield collection
 - Fixed/voted split calculations
 - Emergency mechanisms
 - Multi-cycle operations
+- Yield source validation
 - Edge cases
 
 Run tests:

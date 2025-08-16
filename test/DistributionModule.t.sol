@@ -3,14 +3,13 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {DistributionManager} from "../src/modules/DistributionManager.sol";
-import {YieldCollector} from "../src/modules/YieldCollector.sol";
 import {IDistributionModule} from "../src/interfaces/IDistributionModule.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 /// @notice Simple concrete implementation for testing
 contract TestDistribution is DistributionManager {
-    function initialize(address _yieldToken, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor) external {
-        __DistributionManager_init(_yieldToken, _cycleLength, _yieldFixedSplitDivisor);
+    function initialize(address _yieldToken, address _yieldSource, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor) external {
+        __DistributionManager_init(_yieldToken, _yieldSource, _cycleLength, _yieldFixedSplitDivisor);
     }
 
     function setRecipients(address[] memory _recipients) external {
@@ -25,18 +24,8 @@ contract TestDistribution is DistributionManager {
         }
     }
 
-    function _mintTokensBeforeDistribution() internal override {
-        // Hook implementation - can be customized by inheriting contracts
-    }
-
-    function _collectYield() internal override returns (uint256) {
-        // Simple implementation: return current balance
-        return MockERC20(yieldToken).balanceOf(address(this));
-    }
-
-    function _getAvailableYield() internal view override returns (uint256) {
-        return MockERC20(yieldToken).balanceOf(address(this));
-    }
+    // No need to override _mintTokensBeforeDistribution, _collectYield, or _getAvailableYield
+    // They are now concrete implementations in DistributionManager
 
     function _getVotingResults() internal view override returns (uint256[] memory) {
         return currentVotes;
@@ -53,7 +42,6 @@ contract TestDistribution is DistributionManager {
 
 contract DistributionModuleTest is Test {
     TestDistribution public distribution;
-    YieldCollector public yieldCollector;
     MockERC20 public yieldToken;
 
     address public owner = address(this);
@@ -76,7 +64,7 @@ contract DistributionModuleTest is Test {
     function setUp() public {
         yieldToken = new MockERC20("Yield Token", "YIELD");
         distribution = new TestDistribution();
-        distribution.initialize(address(yieldToken), CYCLE_LENGTH, YIELD_FIXED_SPLIT_DIVISOR);
+        distribution.initialize(address(yieldToken), address(yieldToken), CYCLE_LENGTH, YIELD_FIXED_SPLIT_DIVISOR);
 
         distribution.setEmergencyAdmin(emergencyAdmin);
 
@@ -91,9 +79,6 @@ contract DistributionModuleTest is Test {
         votes[1] = 500;
         votes[2] = 200;
         distribution.setVotes(votes);
-
-        yieldCollector = new YieldCollector(address(yieldToken), address(yieldToken));
-        yieldCollector.setDistributionManager(address(distribution));
     }
 
     function testInitialization() public view {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
+import {IYieldModule} from "../interfaces/IYieldModule.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -22,22 +23,29 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     error NoRecipients();
     error CycleNotComplete();
     error OnlyEmergencyAdmin();
+    error NoYieldSource();
 
     uint256 private constant PRECISION = 1e18;
 
     address public emergencyAdmin;
     address public yieldToken;
+    address public yieldSource;
 
     uint256 public cycleLength;
     uint256 public yieldFixedSplitDivisor;
     uint256 public lastDistributionBlock;
     uint256 public cycleNumber;
+    uint256 public totalYieldCollected;
+    uint256 public lastCollectionBlock;
 
     address[] public recipients;
     uint256[] public currentVotes;
     uint256 public totalVotes;
 
     mapping(uint256 => DistributionState) public distributionHistory;
+
+    event YieldCollected(address indexed source, uint256 amount, uint256 blockNumber);
+    event YieldValidated(uint256 totalYield);
 
     modifier onlyEmergencyAdmin() {
         if (msg.sender != emergencyAdmin && msg.sender != owner()) {
@@ -48,16 +56,19 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     /// @notice Initializes the distribution manager
     /// @param _yieldToken Address of the yield token
+    /// @param _yieldSource Address of the yield source
     /// @param _cycleLength Initial cycle length in blocks
     /// @param _yieldFixedSplitDivisor Initial fixed split divisor
-    function __DistributionManager_init(address _yieldToken, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor)
+    function __DistributionManager_init(address _yieldToken, address _yieldSource, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor)
         internal
     {
         if (_yieldToken == address(0)) revert ZeroAddress();
+        if (_yieldSource == address(0)) revert ZeroAddress();
         if (_cycleLength == 0) revert InvalidCycleLength();
         if (_yieldFixedSplitDivisor == 0) revert InvalidDivisor();
 
         yieldToken = _yieldToken;
+        yieldSource = _yieldSource;
         cycleLength = _cycleLength;
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
         lastDistributionBlock = block.number;
@@ -191,16 +202,60 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         emergencyAdmin = _emergencyAdmin;
     }
 
+    /// @notice Sets the yield source address
+    /// @param _yieldSource Address of the new yield source
+    function setYieldSource(address _yieldSource) external onlyOwner {
+        if (_yieldSource == address(0)) revert ZeroAddress();
+        yieldSource = _yieldSource;
+    }
+
+    /// @notice Gets the current yield source address
+    /// @return The current yield source address
+    function getYieldSource() external view returns (address) {
+        return yieldSource;
+    }
+
+    /// @notice Validates the yield source
+    /// @return isValid Whether the source is valid
+    function validateYieldSource() external view returns (bool isValid) {
+        if (yieldSource == address(0)) return false;
+        return _isSourceValid(yieldSource);
+    }
+
     /// @notice Hook for minting tokens before distribution
-    function _mintTokensBeforeDistribution() internal virtual;
+    /// @dev Can be overridden for custom token minting logic
+    function _mintTokensBeforeDistribution() internal virtual {
+        uint256 requiredTokens = calculateRequiredTokensForDistribution();
 
-    /// @notice Hook for collecting yield
+        if (requiredTokens > 0) {
+            IYieldModule(yieldToken).mint(requiredTokens, address(this));
+            emit TokensMintedForDistribution(requiredTokens);
+        }
+    }
+
+    /// @notice Collects yield from the yield source
     /// @return Total yield collected
-    function _collectYield() internal virtual returns (uint256);
+    function _collectYield() internal returns (uint256) {
+        if (yieldSource == address(0)) revert NoYieldSource();
 
-    /// @notice Hook for getting available yield
+        uint256 totalYield = _collectFromSource(yieldSource);
+        if (totalYield == 0) revert InsufficientYield();
+
+        totalYieldCollected += totalYield;
+        lastCollectionBlock = block.number;
+
+        emit YieldCollected(yieldSource, totalYield, block.number);
+        emit YieldValidated(totalYield);
+
+        return totalYield;
+    }
+
+    /// @notice Gets the total available yield from the yield source
     /// @return Available yield
-    function _getAvailableYield() internal view virtual returns (uint256);
+    function _getAvailableYield() internal view returns (uint256) {
+        if (yieldSource == address(0)) return 0;
+        return _getSourceYield(yieldSource);
+    }
 
     /// @notice Hook for getting voting results
     /// @return votes Array of votes per recipient
@@ -355,5 +410,81 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         (state.fixedAmount, state.votedAmount) = _calculateSplits(totalYield);
 
         emit DistributionValidated(totalYield, activeRecipients.length);
+    }
+
+    /// @notice Calculates required tokens for distribution
+    /// @return Required token amount
+    function calculateRequiredTokensForDistribution() public view returns (uint256) {
+        uint256 currentBalance = IERC20(yieldToken).balanceOf(address(this));
+        uint256 availableYield = _getAvailableYield();
+
+        if (availableYield > currentBalance) {
+            return availableYield - currentBalance;
+        }
+
+        return 0;
+    }
+
+    /// @notice Internal function to collect yield from a specific source
+    /// @param source Address of the yield source
+    /// @return Amount collected
+    function _collectFromSource(address source) internal returns (uint256) {
+        try IYieldModule(source).yieldAccrued() returns (uint256 accrued) {
+            if (accrued > 0) {
+                try IYieldModule(source).claimYield(accrued, address(this)) {
+                    return accrued;
+                } catch {
+                    return 0;
+                }
+            }
+            // If accrued yield is 0, fall back to token balance
+            uint256 balance = IERC20(source).balanceOf(address(this));
+            if (balance > 0) {
+                // For tokens with no accrued yield, just return the balance
+                // The tokens are already in this contract
+                return balance;
+            }
+            return 0;
+        } catch {
+            uint256 balance = IERC20(source).balanceOf(address(this));
+            if (balance > 0) {
+                // For non-IYieldModule tokens, just return the balance
+                // The tokens are already in this contract
+                return balance;
+            }
+            return 0;
+        }
+    }
+
+    /// @notice Internal function to get available yield from a source
+    /// @param source Address of the yield source
+    /// @return Available yield amount
+    function _getSourceYield(address source) internal view returns (uint256) {
+        try IYieldModule(source).yieldAccrued() returns (uint256 accrued) {
+            if (accrued > 0) {
+                return accrued;
+            }
+            // If accrued yield is 0, check token balance as fallback
+            return IERC20(source).balanceOf(address(this));
+        } catch {
+            return IERC20(source).balanceOf(address(this));
+        }
+    }
+
+    /// @notice Internal function to validate a yield source
+    /// @param source Address of the yield source
+    /// @return Whether the source is valid
+    function _isSourceValid(address source) internal view returns (bool) {
+        if (source.code.length == 0) return false;
+
+        try IYieldModule(source).yieldAccrued() returns (uint256) {
+            return true;
+        } catch {
+            try IERC20(source).totalSupply() returns (uint256) {
+                return true;
+            } catch {
+                return false;
+            }
+        }
     }
 }
