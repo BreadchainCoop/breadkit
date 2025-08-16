@@ -44,10 +44,10 @@ contract FixedCycleModule is ICycleModule {
     /// @inheritdoc ICycleModule
     function startNewCycle() external {
         require(this.isDistributionReady(), "Cycle not complete");
-        
+
         currentCycle++;
         lastCycleStartBlock = block.number;
-        
+
         emit NewCycleStarted(currentCycle, lastCycleStartBlock);
     }
 
@@ -55,11 +55,11 @@ contract FixedCycleModule is ICycleModule {
     function getCycleInfo() external view returns (ICycleManager.CycleInfo memory) {
         uint256 endBlock = lastCycleStartBlock + cycleLength;
         uint256 blocksRemaining = 0;
-        
+
         if (block.number < endBlock) {
             blocksRemaining = endBlock - block.number;
         }
-        
+
         return ICycleManager.CycleInfo({
             cycleNumber: currentCycle,
             startBlock: lastCycleStartBlock,
@@ -92,10 +92,10 @@ contract FixedCycleModule is ICycleModule {
         if (newCycleLength == 0) {
             revert InvalidCycleLength();
         }
-        
+
         uint256 oldLength = cycleLength;
         cycleLength = newCycleLength;
-        
+
         emit CycleLengthUpdated(oldLength, newCycleLength);
     }
 }
