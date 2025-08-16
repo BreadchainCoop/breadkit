@@ -48,12 +48,8 @@ interface IRecipientRegistry {
     /// @return name The recipient's name
     /// @return description The recipient's description
     /// @return addedAt The block number when the recipient was added
-    function getRecipientInfo(address recipient) 
-        external 
-        view 
-        returns (
-            string memory name,
-            string memory description,
-            uint256 addedAt
-        );
+    function getRecipientInfo(address recipient)
+        external
+        view
+        returns (string memory name, string memory description, uint256 addedAt);
 }

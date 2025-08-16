@@ -269,7 +269,7 @@ contract VotingModuleTest is Test {
         // Vote with zero voting power should succeed but have no effect
         vm.prank(noTokensVoter);
         votingModule.vote(points);
-        
+
         // Verify vote was recorded but with zero power
         assertTrue(votingModule.accountLastVoted(noTokensVoter) > 0);
     }

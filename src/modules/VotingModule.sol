@@ -120,7 +120,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     /// @inheritdoc IVotingModule
     function vote(uint256[] calldata points) public override {
         uint256 votingPower = getTotalVotingPower(msg.sender);
-        
+
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
         bool hasVotedInCycle = accountLastVoted[msg.sender] > lastCycleStart;
@@ -155,7 +155,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     /// @inheritdoc IVotingModule
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         if (points.length == 0) return false;
-        
+
         // Check if recipient registry is set and validate array length
         if (address(recipientRegistry) != address(0)) {
             uint256 recipientCount = recipientRegistry.getActiveRecipientsCount();
@@ -305,7 +305,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
 
         // Get total voting power
         uint256 votingPower = getTotalVotingPower(voter);
-        
+
         // Validate points
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 

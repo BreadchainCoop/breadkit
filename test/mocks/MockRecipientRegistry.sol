@@ -9,57 +9,54 @@ contract MockRecipientRegistry is IRecipientRegistry {
     address[] public activeRecipients;
     address[] public queuedAdditions;
     address[] public queuedRemovals;
-    
+
     mapping(address => bool) public isRecipient;
     mapping(address => RecipientInfo) public recipientInfo;
-    
+
     struct RecipientInfo {
         string name;
         string description;
         uint256 addedAt;
     }
-    
+
     constructor(address[] memory _initialRecipients) {
         for (uint256 i = 0; i < _initialRecipients.length; i++) {
             activeRecipients.push(_initialRecipients[i]);
             isRecipient[_initialRecipients[i]] = true;
-            recipientInfo[_initialRecipients[i]] = RecipientInfo({
-                name: "Test Recipient",
-                description: "Test Description",
-                addedAt: block.number
-            });
+            recipientInfo[_initialRecipients[i]] =
+                RecipientInfo({name: "Test Recipient", description: "Test Description", addedAt: block.number});
         }
     }
-    
+
     function getActiveRecipients() external view override returns (address[] memory) {
         return activeRecipients;
     }
-    
+
     function getActiveRecipientsCount() external view override returns (uint256) {
         return activeRecipients.length;
     }
-    
+
     function isActiveRecipient(address recipient) external view override returns (bool) {
         return isRecipient[recipient];
     }
-    
+
     function getQueuedAdditions() external view override returns (address[] memory) {
         return queuedAdditions;
     }
-    
+
     function getQueuedRemovals() external view override returns (address[] memory) {
         return queuedRemovals;
     }
-    
+
     function queueRecipientAddition(address recipient) external override {
         queuedAdditions.push(recipient);
     }
-    
+
     function queueRecipientRemoval(address recipient) external override {
         require(isRecipient[recipient], "Not a recipient");
         queuedRemovals.push(recipient);
     }
-    
+
     function processQueuedChanges() external override {
         // Process additions
         for (uint256 i = 0; i < queuedAdditions.length; i++) {
@@ -67,14 +64,11 @@ contract MockRecipientRegistry is IRecipientRegistry {
             if (!isRecipient[recipient]) {
                 activeRecipients.push(recipient);
                 isRecipient[recipient] = true;
-                recipientInfo[recipient] = RecipientInfo({
-                    name: "New Recipient",
-                    description: "New Description",
-                    addedAt: block.number
-                });
+                recipientInfo[recipient] =
+                    RecipientInfo({name: "New Recipient", description: "New Description", addedAt: block.number});
             }
         }
-        
+
         // Process removals
         for (uint256 i = 0; i < queuedRemovals.length; i++) {
             address recipient = queuedRemovals[i];
@@ -90,30 +84,26 @@ contract MockRecipientRegistry is IRecipientRegistry {
                 }
             }
         }
-        
+
         // Clear queues
         delete queuedAdditions;
         delete queuedRemovals;
     }
-    
+
     function validateRecipient(address recipient) external view override returns (bool) {
         return recipient != address(0);
     }
-    
+
     function getRecipientInfo(address recipient)
         external
         view
         override
-        returns (
-            string memory name,
-            string memory description,
-            uint256 addedAt
-        )
+        returns (string memory name, string memory description, uint256 addedAt)
     {
         RecipientInfo memory info = recipientInfo[recipient];
         return (info.name, info.description, info.addedAt);
     }
-    
+
     // Helper function for testing
     function setActiveRecipients(address[] memory _recipients) external {
         delete activeRecipients;
