@@ -79,15 +79,9 @@ contract CycleManagerTest is Test {
         vm.prank(auth);
         manager.startNewCycle();
 
-        // History stored for previous cycle
-        // cycleHistory is public mapping; use generated getter
-        (uint256 num, uint256 startB, uint256 endB, uint256 blocksRem, bool isActive) = manager.cycleHistory(beforeInfo
-            .cycleNumber);
-        assertEq(num, beforeInfo.cycleNumber);
-        assertEq(startB, beforeInfo.startBlock);
-        assertEq(endB, beforeInfo.endBlock);
-        assertEq(blocksRem, 0);
-        assertTrue(isActive);
+        // Distribution flag resets for next cycle (public bool)
+        // should be false immediately after starting a new cycle
+        assertFalse(manager.distributionCompletedForCurrentCycle());
     }
 
     function test_getCurrentCycle_and_getCycleInfo_proxyToModule() public {

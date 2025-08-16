@@ -14,9 +14,6 @@ contract CycleManager is ICycleManager {
     /// @notice Addresses authorized to trigger cycle transitions
     mapping(address => bool) public authorized;
 
-    /// @notice Historical record of cycle transitions
-    mapping(uint256 => CycleInfo) public cycleHistory;
-
     /// @notice Tracks whether distribution has been completed for the current cycle
     bool public distributionCompletedForCurrentCycle;
 
@@ -106,10 +103,6 @@ contract CycleManager is ICycleManager {
         if (!distributionCompletedForCurrentCycle) {
             revert DistributionNotCompleted();
         }
-
-        // Store cycle history before transition
-        uint256 currentCycleNumber = cycleModule.getCurrentCycle();
-        cycleHistory[currentCycleNumber] = cycleModule.getCycleInfo();
 
         // Delegate cycle management to the cycle module
         cycleModule.startNewCycle();
