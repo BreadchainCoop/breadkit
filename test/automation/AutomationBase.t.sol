@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../../src/modules/automation/ChainlinkAutomation.sol";
 import "../../src/modules/automation/GelatoAutomation.sol";
-import "../../src/mocks/MockCycleManager.sol";
 import "../../src/mocks/MockDistributionManager.sol";
 import "../../src/interfaces/IDistributionModule.sol";
 
@@ -31,7 +30,6 @@ contract MockDistributionModule is IDistributionModule {
 contract AutomationBaseTest is Test {
     ChainlinkAutomation public chainlinkAutomation;
     GelatoAutomation public gelatoAutomation;
-    MockCycleManager public cycleManager;
     MockDistributionManager public distributionManager;
     MockDistributionModule public distributionModule;
 
@@ -48,13 +46,9 @@ contract AutomationBaseTest is Test {
         // Deploy distribution manager
         distributionManager = new MockDistributionManager(address(distributionModule), 100);
 
-        // Deploy cycle manager
-        cycleManager = new MockCycleManager(100);
-        cycleManager.setDistributionManager(address(distributionManager));
-
         // Deploy automation implementations
-        chainlinkAutomation = new ChainlinkAutomation(address(cycleManager), address(distributionManager));
-        gelatoAutomation = new GelatoAutomation(address(cycleManager), address(distributionManager));
+        chainlinkAutomation = new ChainlinkAutomation(address(distributionManager));
+        gelatoAutomation = new GelatoAutomation(address(distributionManager));
 
         // Setup initial state
         distributionManager.setCurrentVotes(100);
@@ -184,19 +178,6 @@ contract AutomationBaseTest is Test {
         assertEq(distributionManager.currentVotes(), 0); // Reset after distribution
         assertEq(distributionManager.availableYield(), 0); // Reset after distribution
         assertEq(distributionManager.getLastDistributionBlock(), block.number);
-    }
-
-    function testGetBlocksUntilNextCycle() public {
-        // Initially should have 100 blocks until next cycle
-        assertEq(cycleManager.getBlocksUntilNextCycle(), 100);
-
-        // Advance 50 blocks
-        vm.roll(block.number + 50);
-        assertEq(cycleManager.getBlocksUntilNextCycle(), 50);
-
-        // Advance past cycle length
-        vm.roll(block.number + 60);
-        assertEq(cycleManager.getBlocksUntilNextCycle(), 0);
     }
 
     function testCycleInfo() public {

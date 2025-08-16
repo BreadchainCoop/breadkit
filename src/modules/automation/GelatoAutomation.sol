@@ -7,9 +7,7 @@ import "./AutomationBase.sol";
 /// @notice Gelato Network compatible automation implementation
 /// @dev Implements Gelato automation interface for yield distribution
 contract GelatoAutomation is AutomationBase {
-    constructor(address _cycleManager, address _distributionManager)
-        AutomationBase(_cycleManager, _distributionManager)
-    {}
+    constructor(address _distributionManager) AutomationBase(_distributionManager) {}
 
     /// @notice Gelato-compatible resolver function
     /// @dev Called by Gelato executors to check if work needs to be performed

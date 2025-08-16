@@ -10,6 +10,11 @@ interface IDistributionManager {
     /// @return ready Whether the distribution conditions are met
     function isDistributionReady() external view returns (bool ready);
 
+    /// @notice Gets the automation data for execution
+    /// @dev Returns encoded function call data for automation providers
+    /// @return execPayload The encoded function call data
+    function getAutomationData() external view returns (bytes memory execPayload);
+
     /// @notice Executes the distribution
     /// @dev Handles all distribution logic including yield calculation and transfers
     function executeDistribution() external;

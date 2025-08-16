@@ -55,6 +55,16 @@ contract MockDistributionManager is IDistributionManager {
         return true;
     }
 
+    /// @notice Gets the automation data for execution
+    /// @dev Returns encoded function call data for automation providers
+    function getAutomationData() external view override returns (bytes memory execPayload) {
+        // Return the execution payload if conditions are met
+        if (isDistributionReady()) {
+            return abi.encodeWithSelector(this.executeDistribution.selector);
+        }
+        return new bytes(0);
+    }
+
     /// @notice Executes the distribution
     /// @dev Handles all distribution logic
     function executeDistribution() external override {

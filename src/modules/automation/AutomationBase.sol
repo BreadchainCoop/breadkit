@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../../interfaces/ICycleManager.sol";
 import "../../interfaces/IDistributionManager.sol";
 
 /// @title AutomationBase
 /// @notice Abstract base contract for automation providers
 /// @dev Inherit this contract to create provider-specific automation implementations
 abstract contract AutomationBase is IDistributionManager {
-    ICycleManager public immutable cycleManager;
     IDistributionManager public immutable distributionManager;
 
     event AutomationExecuted(address indexed executor, uint256 blockNumber);
 
     error NotResolved();
 
-    constructor(address _cycleManager, address _distributionManager) {
-        require(_cycleManager != address(0), "Invalid cycle manager");
+    constructor(address _distributionManager) {
         require(_distributionManager != address(0), "Invalid distribution manager");
-        cycleManager = ICycleManager(_cycleManager);
         distributionManager = IDistributionManager(_distributionManager);
     }
 
@@ -30,10 +26,10 @@ abstract contract AutomationBase is IDistributionManager {
     }
 
     /// @notice Gets the automation data for execution
-    /// @dev Delegates to CycleManager for payload generation
+    /// @dev Delegates to DistributionManager for payload generation
     /// @return execPayload The encoded function call data
-    function getAutomationData() public view virtual returns (bytes memory execPayload) {
-        return cycleManager.getAutomationData();
+    function getAutomationData() public view virtual override returns (bytes memory execPayload) {
+        return distributionManager.getAutomationData();
     }
 
     /// @notice Executes the distribution
