@@ -162,7 +162,7 @@ contract DistributionModuleTest is Test {
     function testCannotDistributeWithoutYield() public {
         vm.roll(block.number + CYCLE_LENGTH + 1);
 
-        vm.expectRevert(DistributionManager.InsufficientYield.selector);
+        vm.expectRevert(DistributionManager.DistributionNotResolved.selector);
         distribution.distributeYield();
     }
 
