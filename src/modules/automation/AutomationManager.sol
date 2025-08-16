@@ -66,11 +66,7 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
     /// @param provider The address of the automation provider
     /// @param name The name of the provider
     /// @param priority The priority level (lower number = higher priority)
-    function registerProvider(
-        address provider,
-        string calldata name,
-        uint256 priority
-    ) external onlyOwner {
+    function registerProvider(address provider, string calldata name, uint256 priority) external onlyOwner {
         if (provider == address(0)) revert ZeroAddress();
         if (providers[provider].isRegistered) revert ProviderAlreadyRegistered();
 
@@ -97,7 +93,7 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
     /// @param isActive Whether the provider should be active
     function setProviderStatus(address provider, bool isActive) external onlyOwner {
         if (!providers[provider].isRegistered) revert ProviderNotRegistered();
-        
+
         providers[provider].isActive = isActive;
         emit ProviderStatusChanged(provider, isActive);
     }
@@ -106,7 +102,7 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
     /// @param provider The address of the provider to set as primary
     function setPrimaryProvider(address provider) external onlyOwner {
         if (!providers[provider].isRegistered) revert ProviderNotRegistered();
-        
+
         primaryProvider = provider;
         emit PrimaryProviderSet(provider);
     }
@@ -152,13 +148,9 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
     /// @notice Executes distribution through a specific provider
     /// @param provider The provider executing the distribution
     /// @param data The execution data
-    function executeWithProvider(address provider, bytes calldata data) 
-        external 
-        onlyAutomatedCaller 
-        nonReentrant 
-    {
+    function executeWithProvider(address provider, bytes calldata data) external onlyAutomatedCaller nonReentrant {
         if (provider != msg.sender) revert InvalidProvider();
-        
+
         _executeDistribution();
     }
 
@@ -176,10 +168,10 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
         try distributionModule.distribute() {
             providers[msg.sender].executionCount++;
             providers[msg.sender].lastExecution = block.timestamp;
-            
+
             cycleManager.startNewCycle();
             executionCoordinator.recordSuccessfulExecution();
-            
+
             emit AutomationExecuted(msg.sender, block.timestamp);
         } catch Error(string memory reason) {
             executionCoordinator.recordFailedExecution(reason);
@@ -208,13 +200,11 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
     /// @return isActive Whether the provider is active
     /// @return executionCount Number of successful executions
     /// @return lastExecution Timestamp of last execution
-    function getProviderInfo(address provider) external view returns (
-        string memory name,
-        uint256 priority,
-        bool isActive,
-        uint256 executionCount,
-        uint256 lastExecution
-    ) {
+    function getProviderInfo(address provider)
+        external
+        view
+        returns (string memory name, uint256 priority, bool isActive, uint256 executionCount, uint256 lastExecution)
+    {
         Provider memory p = providers[provider];
         return (p.name, p.priority, p.isActive, p.executionCount, p.lastExecution);
     }
@@ -234,7 +224,7 @@ contract AutomationManager is Initializable, OwnableUpgradeable, ReentrancyGuard
 
         distributionModule.distribute();
         cycleManager.startNewCycle();
-        
+
         emit AutomationExecuted(address(this), block.timestamp);
     }
 }

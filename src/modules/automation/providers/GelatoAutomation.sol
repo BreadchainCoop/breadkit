@@ -15,7 +15,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     ICycleManager public cycleManager;
     IDistributionModule public distributionModule;
     AutomationManager public automationManager;
-    
+
     bytes32 public taskId;
     address public gelatoExecutor;
     bool public isActive;
@@ -56,11 +56,11 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
         address _gelatoExecutor
     ) public initializer {
         __Ownable_init(_owner);
-        
+
         if (_distributionModule == address(0) || _automationManager == address(0)) {
             revert ZeroAddress();
         }
-        
+
         distributionModule = IDistributionModule(_distributionModule);
         automationManager = AutomationManager(_automationManager);
         gelatoExecutor = _gelatoExecutor;
@@ -116,7 +116,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @notice Executes the automation task
     /// @param data The execution data
     function execute(bytes calldata data) public override {
-        (bool canExec, ) = checkCondition();
+        (bool canExec,) = checkCondition();
         if (!canExec) {
             revert ExecutionNotNeeded();
         }
@@ -136,7 +136,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
         // Generate a unique task ID based on contract address and current block
         newTaskId = keccak256(abi.encodePacked(address(this), block.number, block.timestamp));
         taskId = newTaskId;
-        
+
         emit TaskCreated(newTaskId);
         return newTaskId;
     }
@@ -145,7 +145,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     function cancelTask() external onlyOwner {
         bytes32 currentTaskId = taskId;
         taskId = bytes32(0);
-        
+
         emit TaskCancelled(currentTaskId);
     }
 
@@ -168,7 +168,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
             revert UnauthorizedExecutor();
         }
         if (_cycleManager == address(0)) revert ZeroAddress();
-        
+
         cycleManager = ICycleManager(_cycleManager);
         emit CycleManagerUpdated(_cycleManager);
     }
@@ -183,7 +183,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @param _distributionModule The distribution module address
     function setDistributionModule(address _distributionModule) external onlyOwner {
         if (_distributionModule == address(0)) revert ZeroAddress();
-        
+
         distributionModule = IDistributionModule(_distributionModule);
         emit DistributionModuleUpdated(_distributionModule);
     }
@@ -192,7 +192,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @param _automationManager The automation manager address
     function setAutomationManager(address _automationManager) external onlyOwner {
         if (_automationManager == address(0)) revert ZeroAddress();
-        
+
         automationManager = AutomationManager(_automationManager);
         emit AutomationManagerUpdated(_automationManager);
     }
@@ -201,7 +201,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @param _gelatoExecutor The executor address
     function setGelatoExecutor(address _gelatoExecutor) external onlyOwner {
         if (_gelatoExecutor == address(0)) revert ZeroAddress();
-        
+
         gelatoExecutor = _gelatoExecutor;
         emit GelatoExecutorUpdated(_gelatoExecutor);
     }
@@ -222,7 +222,7 @@ contract GelatoAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @notice Checks if execution is currently needed
     /// @return Whether execution is needed
     function isExecutionNeeded() external view returns (bool) {
-        (bool needed, ) = checkCondition();
+        (bool needed,) = checkCondition();
         return needed;
     }
 }

@@ -179,7 +179,7 @@ contract AutomationModuleSimpleTest is Test {
         // Lock execution
         vm.prank(address(provider1));
         executionCoordinator.lockExecution();
-        
+
         uint256 currentId = executionCoordinator.currentExecutionId();
         assertEq(currentId, 1);
 
@@ -201,7 +201,7 @@ contract AutomationModuleSimpleTest is Test {
         // Lock execution
         vm.prank(address(provider1));
         executionCoordinator.lockExecution();
-        
+
         uint256 currentId = executionCoordinator.currentExecutionId();
 
         // Record failed execution
@@ -221,26 +221,26 @@ contract AutomationModuleSimpleTest is Test {
 
     function testProviderConditionChecks() public {
         // Test when distribution is ready
-        (bool needsExecution, ) = provider1.checkCondition();
+        (bool needsExecution,) = provider1.checkCondition();
         assertTrue(needsExecution);
 
         // Test when distribution is not ready
         cycleManager.setDistributionReady(false);
-        (needsExecution, ) = provider1.checkCondition();
+        (needsExecution,) = provider1.checkCondition();
         assertFalse(needsExecution);
 
         // Test when provider is inactive
         cycleManager.setDistributionReady(true);
         vm.prank(owner);
         provider1.setActive(false);
-        (needsExecution, ) = provider1.checkCondition();
+        (needsExecution,) = provider1.checkCondition();
         assertFalse(needsExecution);
     }
 
     function testMultipleProvidersCoordination() public {
         // Both providers should see execution is needed
-        (bool needs1, ) = provider1.checkCondition();
-        (bool needs2, ) = provider2.checkCondition();
+        (bool needs1,) = provider1.checkCondition();
+        (bool needs2,) = provider2.checkCondition();
         assertTrue(needs1);
         assertTrue(needs2);
 
@@ -292,7 +292,7 @@ contract AutomationModuleSimpleTest is Test {
         executionCoordinator.recordSuccessfulExecution();
         vm.prank(address(provider1));
         executionCoordinator.unlockExecution();
-        
+
         status = executionCoordinator.getExecutionStatus();
         assertEq(uint256(status), uint256(ExecutionCoordinator.ExecutionStatus.Executed));
     }
@@ -306,7 +306,7 @@ contract AutomationModuleSimpleTest is Test {
 
         // Start new cycle
         cycleManager.startNewCycle();
-        (cycleNum, , ) = cycleManager.getCycleInfo();
+        (cycleNum,,) = cycleManager.getCycleInfo();
         assertEq(cycleNum, 2);
         assertEq(cycleManager.getBlocksUntilNextCycle(), 100);
 

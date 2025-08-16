@@ -21,11 +21,7 @@ interface ICycleManager {
     /// @return cycleNumber The current cycle number
     /// @return startBlock The block number when the current cycle started
     /// @return endBlock The block number when the current cycle should end
-    function getCycleInfo() external view returns (
-        uint256 cycleNumber,
-        uint256 startBlock,
-        uint256 endBlock
-    );
+    function getCycleInfo() external view returns (uint256 cycleNumber, uint256 startBlock, uint256 endBlock);
 
     /// @notice Sets the cycle length in blocks
     /// @param _cycleLength The number of blocks in each cycle

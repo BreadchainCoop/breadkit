@@ -44,7 +44,7 @@ contract ExecutionCoordinator {
         globalExecutionLock = true;
         currentExecutionId++;
         executionLocks[currentExecutionId] = true;
-        
+
         executionHistory[currentExecutionId] = ExecutionRecord({
             provider: msg.sender,
             timestamp: block.timestamp,
@@ -62,7 +62,7 @@ contract ExecutionCoordinator {
         if (!globalExecutionLock) {
             revert ExecutionNotLocked();
         }
-        
+
         if (executionHistory[currentExecutionId].provider != msg.sender) {
             revert UnauthorizedUnlock();
         }

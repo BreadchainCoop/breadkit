@@ -15,7 +15,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     ICycleManager public cycleManager;
     IDistributionModule public distributionModule;
     AutomationManager public automationManager;
-    
+
     bool public isActive;
     uint256 public lastUpkeepBlock;
     uint256 public minBlockInterval;
@@ -36,17 +36,13 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(
-        address _owner,
-        address _distributionModule,
-        address _automationManager
-    ) public initializer {
+    function initialize(address _owner, address _distributionModule, address _automationManager) public initializer {
         __Ownable_init(_owner);
-        
+
         if (_distributionModule == address(0) || _automationManager == address(0)) {
             revert ZeroAddress();
         }
-        
+
         distributionModule = IDistributionModule(_distributionModule);
         automationManager = AutomationManager(_automationManager);
         isActive = true;
@@ -56,11 +52,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @notice Chainlink-compatible upkeep check
     /// @return upkeepNeeded Whether upkeep is needed
     /// @return performData The data to pass to performUpkeep
-    function checkUpkeep(bytes calldata) 
-        external 
-        view 
-        returns (bool upkeepNeeded, bytes memory performData) 
-    {
+    function checkUpkeep(bytes calldata) external view returns (bool upkeepNeeded, bytes memory performData) {
         return checkCondition();
     }
 
@@ -101,7 +93,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @notice Executes the automation task
     /// @param data The execution data
     function execute(bytes calldata data) public override {
-        (bool upkeepNeeded, ) = checkCondition();
+        (bool upkeepNeeded,) = checkCondition();
         if (!upkeepNeeded) {
             revert UpkeepNotNeeded();
         }
@@ -128,7 +120,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
             revert("Unauthorized");
         }
         if (_cycleManager == address(0)) revert ZeroAddress();
-        
+
         cycleManager = ICycleManager(_cycleManager);
         emit CycleManagerUpdated(_cycleManager);
     }
@@ -143,7 +135,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @param _distributionModule The distribution module address
     function setDistributionModule(address _distributionModule) external onlyOwner {
         if (_distributionModule == address(0)) revert ZeroAddress();
-        
+
         distributionModule = IDistributionModule(_distributionModule);
         emit DistributionModuleUpdated(_distributionModule);
     }
@@ -152,7 +144,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @param _automationManager The automation manager address
     function setAutomationManager(address _automationManager) external onlyOwner {
         if (_automationManager == address(0)) revert ZeroAddress();
-        
+
         automationManager = AutomationManager(_automationManager);
         emit AutomationManagerUpdated(_automationManager);
     }
@@ -173,7 +165,7 @@ contract ChainlinkAutomation is IAutomation, Initializable, OwnableUpgradeable {
     /// @notice Gets whether an upkeep is currently needed
     /// @return Whether upkeep is needed
     function getUpkeepNeeded() external view returns (bool) {
-        (bool needed, ) = checkCondition();
+        (bool needed,) = checkCondition();
         return needed;
     }
 }
