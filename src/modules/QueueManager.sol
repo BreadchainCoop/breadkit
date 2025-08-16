@@ -43,13 +43,9 @@ abstract contract QueueManager {
     function _enqueue() internal returns (uint256 itemId) {
         itemId = _nextQueueId++;
         uint256 executeAfter = block.timestamp + _delay;
-        
-        _queue[itemId] = QueueItem({
-            executeAfter: executeAfter,
-            executed: false,
-            cancelled: false
-        });
-        
+
+        _queue[itemId] = QueueItem({executeAfter: executeAfter, executed: false, cancelled: false});
+
         _pendingIds.push(itemId);
         emit QueueItemAdded(itemId, executeAfter);
     }
@@ -58,12 +54,12 @@ abstract contract QueueManager {
     /// @param itemId Item to check
     function _canExecute(uint256 itemId) internal view returns (bool) {
         QueueItem memory item = _queue[itemId];
-        
+
         if (item.executeAfter == 0) revert ItemNotFound();
         if (item.executed) revert ItemAlreadyExecuted();
         if (item.cancelled) revert ChangeIsCancelled();
         if (block.timestamp < item.executeAfter) revert ItemNotReady();
-        
+
         return true;
     }
 
@@ -79,11 +75,11 @@ abstract contract QueueManager {
     /// @param itemId Item to cancel
     function _cancelQueueItem(uint256 itemId) internal {
         QueueItem storage item = _queue[itemId];
-        
+
         if (item.executeAfter == 0) revert ItemNotFound();
         if (item.executed) revert ItemAlreadyExecuted();
         if (item.cancelled) revert ChangeIsCancelled();
-        
+
         item.cancelled = true;
         _removePendingId(itemId);
         emit QueueItemCancelled(itemId);
@@ -127,16 +123,16 @@ abstract contract QueueManager {
     function _cleanupPendingList() internal {
         uint256[] memory tempIds = new uint256[](_pendingIds.length);
         uint256 count = 0;
-        
+
         for (uint256 i = 0; i < _pendingIds.length; i++) {
             uint256 itemId = _pendingIds[i];
             QueueItem memory item = _queue[itemId];
-            
+
             if (!item.executed && !item.cancelled) {
                 tempIds[count++] = itemId;
             }
         }
-        
+
         delete _pendingIds;
         for (uint256 i = 0; i < count; i++) {
             _pendingIds.push(tempIds[i]);

@@ -12,7 +12,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     mapping(address => Recipient) private _recipients;
     address[] private _activeRecipientAddresses;
     mapping(uint256 => QueuedChange) private _queuedChanges;
-    
+
     uint256 private constant MAX_RECIPIENTS = 50;
     uint256 private constant PERCENTAGE_PRECISION = 10000; // 100.00%
 
@@ -25,18 +25,18 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     }
 
     /// @notice Queue a new recipient addition
-    function queueAddRecipient(
-        address recipient,
-        uint256 percentage,
-        string calldata metadata
-    ) external onlyOwner returns (uint256 changeId) {
+    function queueAddRecipient(address recipient, uint256 percentage, string calldata metadata)
+        external
+        onlyOwner
+        returns (uint256 changeId)
+    {
         if (recipient == address(0)) revert InvalidRecipient();
         if (percentage == 0 || percentage > PERCENTAGE_PRECISION) revert InvalidPercentage();
         if (_recipients[recipient].isActive) revert RecipientAlreadyExists();
         if (_activeRecipientAddresses.length >= MAX_RECIPIENTS) revert InvalidRecipient();
 
         changeId = _enqueue();
-        
+
         _queuedChanges[changeId] = QueuedChange({
             changeType: 0, // add
             recipient: recipient,
@@ -55,7 +55,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
         if (!_recipients[recipient].isActive) revert RecipientNotFound();
 
         changeId = _enqueue();
-        
+
         _queuedChanges[changeId] = QueuedChange({
             changeType: 1, // remove
             recipient: recipient,
@@ -70,16 +70,16 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     }
 
     /// @notice Queue a recipient update
-    function queueUpdateRecipient(
-        address recipient,
-        uint256 percentage,
-        string calldata metadata
-    ) external onlyOwner returns (uint256 changeId) {
+    function queueUpdateRecipient(address recipient, uint256 percentage, string calldata metadata)
+        external
+        onlyOwner
+        returns (uint256 changeId)
+    {
         if (!_recipients[recipient].isActive) revert RecipientNotFound();
         if (percentage == 0 || percentage > PERCENTAGE_PRECISION) revert InvalidPercentage();
 
         changeId = _enqueue();
-        
+
         _queuedChanges[changeId] = QueuedChange({
             changeType: 2, // update
             recipient: recipient,
@@ -96,7 +96,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     /// @notice Execute a queued change after delay period
     function executeChange(uint256 changeId) external {
         if (!_canExecute(changeId)) revert ItemNotReady();
-        
+
         QueuedChange storage change = _queuedChanges[changeId];
         if (change.executed) revert ItemAlreadyExecuted();
         if (change.cancelled) revert ChangeIsCancelled();
@@ -111,9 +111,9 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
 
         change.executed = true;
         _markExecuted(changeId);
-        
+
         if (!validatePercentages()) revert TotalPercentageExceeds100();
-        
+
         emit ChangeExecuted(changeId);
     }
 
@@ -122,10 +122,10 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
         QueuedChange storage change = _queuedChanges[changeId];
         if (change.executed) revert ItemAlreadyExecuted();
         if (change.cancelled) revert ChangeIsCancelled();
-        
+
         change.cancelled = true;
         _cancelQueueItem(changeId);
-        
+
         emit ChangeCancelled(changeId);
     }
 
@@ -138,7 +138,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
             isActive: true,
             addedAt: block.timestamp
         });
-        
+
         _activeRecipientAddresses.push(recipient);
         emit RecipientAdded(recipient, percentage, metadata);
     }
@@ -146,7 +146,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     /// @notice Internal function to remove recipient
     function _removeRecipient(address recipient) private {
         delete _recipients[recipient];
-        
+
         // Remove from active addresses array
         for (uint256 i = 0; i < _activeRecipientAddresses.length; i++) {
             if (_activeRecipientAddresses[i] == recipient) {
@@ -155,7 +155,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
                 break;
             }
         }
-        
+
         emit RecipientRemoved(recipient);
     }
 
@@ -164,7 +164,7 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
         Recipient storage r = _recipients[recipient];
         r.percentage = percentage;
         r.metadata = metadata;
-        
+
         emit RecipientUpdated(recipient, percentage, metadata);
     }
 
@@ -172,11 +172,11 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     function getActiveRecipients() external view returns (Recipient[] memory) {
         uint256 length = _activeRecipientAddresses.length;
         Recipient[] memory activeRecipients = new Recipient[](length);
-        
+
         for (uint256 i = 0; i < length; i++) {
             activeRecipients[i] = _recipients[_activeRecipientAddresses[i]];
         }
-        
+
         return activeRecipients;
     }
 
@@ -215,22 +215,22 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     /// @notice Validate that total percentages don't exceed 100%
     function validatePercentages() public view returns (bool) {
         uint256 totalPercentage = 0;
-        
+
         for (uint256 i = 0; i < _activeRecipientAddresses.length; i++) {
             totalPercentage += _recipients[_activeRecipientAddresses[i]].percentage;
         }
-        
+
         return totalPercentage <= PERCENTAGE_PRECISION;
     }
 
     /// @notice Get total allocated percentage
     function getTotalAllocatedPercentage() external view returns (uint256) {
         uint256 totalPercentage = 0;
-        
+
         for (uint256 i = 0; i < _activeRecipientAddresses.length; i++) {
             totalPercentage += _recipients[_activeRecipientAddresses[i]].percentage;
         }
-        
+
         return totalPercentage;
     }
 
