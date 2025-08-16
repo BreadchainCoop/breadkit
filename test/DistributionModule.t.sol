@@ -8,7 +8,12 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 
 /// @notice Simple concrete implementation for testing
 contract TestDistribution is DistributionManager {
-    function initialize(address _yieldToken, address _yieldSource, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor) external {
+    function initialize(
+        address _yieldToken,
+        address _yieldSource,
+        uint256 _cycleLength,
+        uint256 _yieldFixedSplitDivisor
+    ) external {
         __DistributionManager_init(_yieldToken, _yieldSource, _cycleLength, _yieldFixedSplitDivisor);
     }
 

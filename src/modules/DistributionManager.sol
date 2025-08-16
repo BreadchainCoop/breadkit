@@ -59,9 +59,12 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param _yieldSource Address of the yield source
     /// @param _cycleLength Initial cycle length in blocks
     /// @param _yieldFixedSplitDivisor Initial fixed split divisor
-    function __DistributionManager_init(address _yieldToken, address _yieldSource, uint256 _cycleLength, uint256 _yieldFixedSplitDivisor)
-        internal
-    {
+    function __DistributionManager_init(
+        address _yieldToken,
+        address _yieldSource,
+        uint256 _cycleLength,
+        uint256 _yieldFixedSplitDivisor
+    ) internal {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_yieldSource == address(0)) revert ZeroAddress();
         if (_cycleLength == 0) revert InvalidCycleLength();
