@@ -9,7 +9,6 @@ import "./BaseRecipientRegistry.sol";
 /// @dev This implementation provides centralized control where only the admin can modify recipients
 /// @author BreadKit Protocol
 contract AdminRecipientRegistry is BaseRecipientRegistry {
-
     /// @notice Initialize the registry with an admin
     /// @dev This function replaces the constructor for upgradeable contracts
     /// @dev Sets the admin as the owner who can queue recipient changes

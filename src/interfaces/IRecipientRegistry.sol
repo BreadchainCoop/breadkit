@@ -5,13 +5,12 @@ pragma solidity ^0.8.20;
 /// @notice Interface for managing yield recipients with simple queueing
 /// @dev Based on the Breadchain YieldDistributor queueing model
 interface IRecipientRegistry {
-    
     // Events
     event RecipientQueued(address indexed recipient, bool isAddition);
     event RecipientAdded(address indexed recipient);
     event RecipientRemoved(address indexed recipient);
     event QueueProcessed(uint256 added, uint256 removed);
-    
+
     // Errors
     error InvalidRecipient();
     error RecipientAlreadyExists();

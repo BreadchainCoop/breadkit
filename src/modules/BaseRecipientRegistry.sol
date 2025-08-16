@@ -7,52 +7,51 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 /// @notice Abstract base contract for managing yield recipients with queued changes
 /// @dev Provides common queue management functionality for recipient registries
 abstract contract BaseRecipientRegistry is OwnableUpgradeable {
-    
     /// @notice Array of active recipient addresses
     /// @dev This array contains all currently active recipients who can receive yield
     address[] public recipients;
-    
+
     /// @notice Array of addresses queued for addition to the recipient list
     /// @dev These addresses will be added when updateRecipients() is called
     address[] public queuedRecipientsForAddition;
-    
+
     /// @notice Array of addresses queued for removal from the recipient list
     /// @dev These addresses will be removed when updateRecipients() is called
     address[] public queuedRecipientsForRemoval;
-    
+
     /// @notice Mapping to quickly check if an address is an active recipient
     /// @dev Maps recipient address to true if active, false otherwise
     mapping(address => bool) public isRecipient;
-    
+
     // Events
     /// @notice Emitted when a recipient is successfully added to the registry
     /// @param recipient The address of the newly added recipient
     event RecipientAdded(address indexed recipient);
-    
+
     /// @notice Emitted when a recipient is successfully removed from the registry
     /// @param recipient The address of the removed recipient
     event RecipientRemoved(address indexed recipient);
-    
+
     /// @notice Emitted when a recipient is queued for addition or removal
     /// @param recipient The address being queued
     /// @param isAddition True if queued for addition, false for removal
     event RecipientQueued(address indexed recipient, bool isAddition);
-    
+
     /// @notice Emitted when the queue is processed and recipients are updated
     /// @param added Number of recipients added
     /// @param removed Number of recipients removed
     event QueueProcessed(uint256 added, uint256 removed);
-    
+
     // Errors
     /// @notice Thrown when attempting to add the zero address as a recipient
     error InvalidRecipient();
-    
+
     /// @notice Thrown when attempting to add a recipient that already exists in the registry
     error RecipientAlreadyExists();
-    
+
     /// @notice Thrown when attempting to remove a recipient that doesn't exist in the registry
     error RecipientNotFound();
-    
+
     /// @notice Thrown when attempting to queue a recipient that is already queued
     error RecipientAlreadyQueued();
 
@@ -64,14 +63,14 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     function _queueRecipientAddition(address recipient) internal {
         if (recipient == address(0)) revert InvalidRecipient();
         if (isRecipient[recipient]) revert RecipientAlreadyExists();
-        
+
         // Check if already queued to prevent duplicates
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
             if (queuedRecipientsForAddition[i] == recipient) {
                 revert RecipientAlreadyQueued();
             }
         }
-        
+
         queuedRecipientsForAddition.push(recipient);
         emit RecipientQueued(recipient, true);
     }
@@ -83,14 +82,14 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     /// @dev Emits RecipientQueued event with isAddition=false
     function _queueRecipientRemoval(address recipient) internal {
         if (!isRecipient[recipient]) revert RecipientNotFound();
-        
+
         // Check if already queued for removal to prevent duplicates
         for (uint256 i = 0; i < queuedRecipientsForRemoval.length; i++) {
             if (queuedRecipientsForRemoval[i] == recipient) {
                 revert RecipientAlreadyQueued();
             }
         }
-        
+
         queuedRecipientsForRemoval.push(recipient);
         emit RecipientQueued(recipient, false);
     }
@@ -107,7 +106,7 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     function _updateRecipients() internal {
         uint256 addedCount = queuedRecipientsForAddition.length;
         uint256 removedCount = 0;
-        
+
         // Add all queued recipients
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
             address recipient = queuedRecipientsForAddition[i];
@@ -120,11 +119,11 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         if (queuedRecipientsForRemoval.length > 0) {
             address[] memory oldRecipients = recipients;
             delete recipients;
-            
+
             for (uint256 i = 0; i < oldRecipients.length; i++) {
                 address recipient = oldRecipients[i];
                 bool shouldRemove = false;
-                
+
                 // Check if this recipient should be removed
                 for (uint256 j = 0; j < queuedRecipientsForRemoval.length; j++) {
                     if (recipient == queuedRecipientsForRemoval[j]) {
@@ -135,18 +134,18 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
                         break;
                     }
                 }
-                
+
                 // Keep recipient if not marked for removal
                 if (!shouldRemove) {
                     recipients.push(recipient);
                 }
             }
         }
-        
+
         // Clear both queues after processing
         delete queuedRecipientsForAddition;
         delete queuedRecipientsForRemoval;
-        
+
         emit QueueProcessed(addedCount, removedCount);
     }
 

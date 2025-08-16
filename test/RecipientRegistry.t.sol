@@ -8,12 +8,12 @@ import {IRecipientRegistry} from "../src/interfaces/IRecipientRegistry.sol";
 
 contract RecipientRegistryTest is TestWrapper {
     RecipientRegistry public registry;
-    
+
     address public constant RECIPIENT_1 = address(0x1);
     address public constant RECIPIENT_2 = address(0x2);
     address public constant RECIPIENT_3 = address(0x3);
     address public constant RECIPIENT_4 = address(0x4);
-    
+
     event RecipientQueued(address indexed recipient, bool isAddition);
     event RecipientAdded(address indexed recipient);
     event RecipientRemoved(address indexed recipient);
@@ -32,9 +32,9 @@ contract RecipientRegistryTest is TestWrapper {
     function test_QueueRecipientAddition() public {
         vm.expectEmit(true, true, false, true);
         emit RecipientQueued(RECIPIENT_1, true);
-        
+
         registry.queueRecipientAddition(RECIPIENT_1);
-        
+
         address[] memory queued = registry.getQueuedAdditions();
         assertEq(queued.length, 1);
         assertEq(queued[0], RECIPIENT_1);
@@ -45,7 +45,7 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.queueRecipientAddition(RECIPIENT_2);
         registry.queueRecipientAddition(RECIPIENT_3);
-        
+
         address[] memory queued = registry.getQueuedAdditions();
         assertEq(queued.length, 3);
         assertEq(queued[0], RECIPIENT_1);
@@ -56,20 +56,20 @@ contract RecipientRegistryTest is TestWrapper {
     function test_ProcessQueueAdditions() public {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.queueRecipientAddition(RECIPIENT_2);
-        
+
         vm.expectEmit(true, false, false, true);
         emit RecipientAdded(RECIPIENT_1);
         vm.expectEmit(true, false, false, true);
         emit RecipientAdded(RECIPIENT_2);
         vm.expectEmit(false, false, false, true);
         emit QueueProcessed(2, 0);
-        
+
         registry.processQueue();
-        
+
         assertEq(registry.getRecipientCount(), 2);
         assertTrue(registry.isRecipient(RECIPIENT_1));
         assertTrue(registry.isRecipient(RECIPIENT_2));
-        
+
         // Queue should be cleared
         assertEq(registry.getQueuedAdditions().length, 0);
     }
@@ -78,13 +78,13 @@ contract RecipientRegistryTest is TestWrapper {
         // First add a recipient
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.processQueue();
-        
+
         // Queue removal
         vm.expectEmit(true, true, false, true);
         emit RecipientQueued(RECIPIENT_1, false);
-        
+
         registry.queueRecipientRemoval(RECIPIENT_1);
-        
+
         address[] memory queued = registry.getQueuedRemovals();
         assertEq(queued.length, 1);
         assertEq(queued[0], RECIPIENT_1);
@@ -97,26 +97,26 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_2);
         registry.queueRecipientAddition(RECIPIENT_3);
         registry.processQueue();
-        
+
         // Queue removals
         registry.queueRecipientRemoval(RECIPIENT_1);
         registry.queueRecipientRemoval(RECIPIENT_3);
-        
+
         vm.expectEmit(true, false, false, true);
         emit RecipientRemoved(RECIPIENT_1);
         vm.expectEmit(true, false, false, true);
         emit RecipientRemoved(RECIPIENT_3);
         vm.expectEmit(false, false, false, true);
         emit QueueProcessed(0, 2);
-        
+
         registry.processQueue();
-        
+
         // Only RECIPIENT_2 should remain
         assertEq(registry.getRecipientCount(), 1);
         assertFalse(registry.isRecipient(RECIPIENT_1));
         assertTrue(registry.isRecipient(RECIPIENT_2));
         assertFalse(registry.isRecipient(RECIPIENT_3));
-        
+
         // Queues should be cleared
         assertEq(registry.getQueuedRemovals().length, 0);
     }
@@ -126,17 +126,17 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.queueRecipientAddition(RECIPIENT_2);
         registry.processQueue();
-        
+
         // Queue mixed operations
         registry.queueRecipientAddition(RECIPIENT_3);
         registry.queueRecipientAddition(RECIPIENT_4);
         registry.queueRecipientRemoval(RECIPIENT_1);
-        
+
         vm.expectEmit(false, false, false, true);
         emit QueueProcessed(2, 1);
-        
+
         registry.processQueue();
-        
+
         // Should have RECIPIENT_2, RECIPIENT_3, RECIPIENT_4
         assertEq(registry.getRecipientCount(), 3);
         assertFalse(registry.isRecipient(RECIPIENT_1));
@@ -148,11 +148,11 @@ contract RecipientRegistryTest is TestWrapper {
     function test_ClearAdditionQueue() public {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.queueRecipientAddition(RECIPIENT_2);
-        
+
         assertEq(registry.getQueuedAdditions().length, 2);
-        
+
         registry.clearAdditionQueue();
-        
+
         assertEq(registry.getQueuedAdditions().length, 0);
     }
 
@@ -161,15 +161,15 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.queueRecipientAddition(RECIPIENT_2);
         registry.processQueue();
-        
+
         // Queue removals
         registry.queueRecipientRemoval(RECIPIENT_1);
         registry.queueRecipientRemoval(RECIPIENT_2);
-        
+
         assertEq(registry.getQueuedRemovals().length, 2);
-        
+
         registry.clearRemovalQueue();
-        
+
         assertEq(registry.getQueuedRemovals().length, 0);
     }
 
@@ -178,7 +178,7 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_2);
         registry.queueRecipientAddition(RECIPIENT_3);
         registry.processQueue();
-        
+
         address[] memory recipients = registry.getRecipients();
         assertEq(recipients.length, 3);
         assertEq(recipients[0], RECIPIENT_1);
@@ -194,14 +194,14 @@ contract RecipientRegistryTest is TestWrapper {
     function test_RevertOnDuplicateRecipient() public {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.processQueue();
-        
+
         vm.expectRevert(IRecipientRegistry.RecipientAlreadyExists.selector);
         registry.queueRecipientAddition(RECIPIENT_1);
     }
 
     function test_RevertOnDuplicateQueuedAddition() public {
         registry.queueRecipientAddition(RECIPIENT_1);
-        
+
         vm.expectRevert(IRecipientRegistry.RecipientAlreadyQueued.selector);
         registry.queueRecipientAddition(RECIPIENT_1);
     }
@@ -214,9 +214,9 @@ contract RecipientRegistryTest is TestWrapper {
     function test_RevertOnDuplicateQueuedRemoval() public {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.processQueue();
-        
+
         registry.queueRecipientRemoval(RECIPIENT_1);
-        
+
         vm.expectRevert(IRecipientRegistry.RecipientAlreadyQueued.selector);
         registry.queueRecipientRemoval(RECIPIENT_1);
     }
@@ -225,7 +225,7 @@ contract RecipientRegistryTest is TestWrapper {
         vm.prank(address(0xdead));
         vm.expectRevert();
         registry.queueRecipientAddition(RECIPIENT_1);
-        
+
         vm.prank(address(0xdead));
         vm.expectRevert();
         registry.queueRecipientRemoval(RECIPIENT_1);
@@ -233,11 +233,11 @@ contract RecipientRegistryTest is TestWrapper {
 
     function test_OnlyOwnerCanClearQueues() public {
         registry.queueRecipientAddition(RECIPIENT_1);
-        
+
         vm.prank(address(0xdead));
         vm.expectRevert();
         registry.clearAdditionQueue();
-        
+
         vm.prank(address(0xdead));
         vm.expectRevert();
         registry.clearRemovalQueue();
@@ -245,10 +245,10 @@ contract RecipientRegistryTest is TestWrapper {
 
     function test_AnyoneCanProcessQueue() public {
         registry.queueRecipientAddition(RECIPIENT_1);
-        
+
         vm.prank(address(0xdead));
         registry.processQueue();
-        
+
         assertTrue(registry.isRecipient(RECIPIENT_1));
     }
 
@@ -264,15 +264,15 @@ contract RecipientRegistryTest is TestWrapper {
         for (uint256 i = 1; i <= count; i++) {
             registry.queueRecipientAddition(address(uint160(i)));
         }
-        
+
         registry.processQueue();
         assertEq(registry.getRecipientCount(), count);
-        
+
         // Remove half
         for (uint256 i = 1; i <= 50; i++) {
             registry.queueRecipientRemoval(address(uint160(i)));
         }
-        
+
         registry.processQueue();
         assertEq(registry.getRecipientCount(), 50);
     }
