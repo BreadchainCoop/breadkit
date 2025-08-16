@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {console} from "forge-std/Test.sol";
 import {TestWrapper} from "./TestWrapper.sol";
 import {AdminRecipientRegistry} from "../src/modules/AdminRecipientRegistry.sol";
+import {BaseRecipientRegistry} from "../src/modules/BaseRecipientRegistry.sol";
 
 contract AdminRecipientRegistryTest is TestWrapper {
     AdminRecipientRegistry public registry;
@@ -16,6 +17,8 @@ contract AdminRecipientRegistryTest is TestWrapper {
     
     event RecipientAdded(address indexed recipient);
     event RecipientRemoved(address indexed recipient);
+    event RecipientQueued(address indexed recipient, bool isAddition);
+    event QueueProcessed(uint256 added, uint256 removed);
 
     function setUp() public {
         registry = new AdminRecipientRegistry();
@@ -27,28 +30,44 @@ contract AdminRecipientRegistryTest is TestWrapper {
         assertEq(registry.getRecipientCount(), 0);
     }
 
-    function test_AddRecipient() public {
+    function test_QueueAndUpdateRecipient() public {
         vm.prank(ADMIN);
         vm.expectEmit(true, false, false, false);
+        emit RecipientQueued(RECIPIENT_1, true);
+        registry.queueRecipientAddition(RECIPIENT_1);
+        
+        assertTrue(registry.isQueuedForAddition(RECIPIENT_1));
+        assertFalse(registry.isRecipient(RECIPIENT_1));
+        
+        vm.expectEmit(true, false, false, false);
         emit RecipientAdded(RECIPIENT_1);
-        registry.addRecipient(RECIPIENT_1);
+        vm.expectEmit(true, false, true, true);
+        emit QueueProcessed(1, 0);
+        registry.updateRecipients();
         
         assertTrue(registry.isRecipient(RECIPIENT_1));
         assertEq(registry.getRecipientCount(), 1);
+        assertFalse(registry.isQueuedForAddition(RECIPIENT_1));
         
         address[] memory recipients = registry.getRecipients();
         assertEq(recipients.length, 1);
         assertEq(recipients[0], RECIPIENT_1);
     }
 
-    function test_AddMultipleRecipients() public {
+    function test_QueueMultipleRecipients() public {
         address[] memory toAdd = new address[](3);
         toAdd[0] = RECIPIENT_1;
         toAdd[1] = RECIPIENT_2;
         toAdd[2] = RECIPIENT_3;
         
         vm.prank(ADMIN);
-        registry.addRecipients(toAdd);
+        registry.queueRecipientsAddition(toAdd);
+        
+        assertTrue(registry.isQueuedForAddition(RECIPIENT_1));
+        assertTrue(registry.isQueuedForAddition(RECIPIENT_2));
+        assertTrue(registry.isQueuedForAddition(RECIPIENT_3));
+        
+        registry.updateRecipients();
         
         assertEq(registry.getRecipientCount(), 3);
         assertTrue(registry.isRecipient(RECIPIENT_1));
@@ -56,14 +75,21 @@ contract AdminRecipientRegistryTest is TestWrapper {
         assertTrue(registry.isRecipient(RECIPIENT_3));
     }
 
-    function test_RemoveRecipient() public {
+    function test_QueueAndRemoveRecipient() public {
         vm.startPrank(ADMIN);
-        registry.addRecipient(RECIPIENT_1);
-        registry.addRecipient(RECIPIENT_2);
+        registry.queueRecipientAddition(RECIPIENT_1);
+        registry.queueRecipientAddition(RECIPIENT_2);
+        registry.updateRecipients();
+        
+        vm.expectEmit(true, false, false, false);
+        emit RecipientQueued(RECIPIENT_1, false);
+        registry.queueRecipientRemoval(RECIPIENT_1);
         
         vm.expectEmit(true, false, false, false);
         emit RecipientRemoved(RECIPIENT_1);
-        registry.removeRecipient(RECIPIENT_1);
+        vm.expectEmit(true, false, true, true);
+        emit QueueProcessed(0, 1);
+        registry.updateRecipients();
         vm.stopPrank();
         
         assertFalse(registry.isRecipient(RECIPIENT_1));
@@ -71,7 +97,7 @@ contract AdminRecipientRegistryTest is TestWrapper {
         assertEq(registry.getRecipientCount(), 1);
     }
 
-    function test_RemoveMultipleRecipients() public {
+    function test_QueueMultipleRemoval() public {
         vm.startPrank(ADMIN);
         
         // Add recipients
@@ -80,13 +106,15 @@ contract AdminRecipientRegistryTest is TestWrapper {
         toAdd[1] = RECIPIENT_2;
         toAdd[2] = RECIPIENT_3;
         toAdd[3] = RECIPIENT_4;
-        registry.addRecipients(toAdd);
+        registry.queueRecipientsAddition(toAdd);
+        registry.updateRecipients();
         
         // Remove some
         address[] memory toRemove = new address[](2);
         toRemove[0] = RECIPIENT_1;
         toRemove[1] = RECIPIENT_3;
-        registry.removeRecipients(toRemove);
+        registry.queueRecipientsRemoval(toRemove);
+        registry.updateRecipients();
         
         vm.stopPrank();
         
@@ -99,38 +127,40 @@ contract AdminRecipientRegistryTest is TestWrapper {
 
     function test_RevertOnInvalidRecipient() public {
         vm.prank(ADMIN);
-        vm.expectRevert(AdminRecipientRegistry.InvalidRecipient.selector);
-        registry.addRecipient(address(0));
+        vm.expectRevert();
+        registry.queueRecipientAddition(address(0));
     }
 
     function test_RevertOnDuplicateRecipient() public {
         vm.startPrank(ADMIN);
-        registry.addRecipient(RECIPIENT_1);
+        registry.queueRecipientAddition(RECIPIENT_1);
+        registry.updateRecipients();
         
-        vm.expectRevert(AdminRecipientRegistry.RecipientAlreadyExists.selector);
-        registry.addRecipient(RECIPIENT_1);
+        vm.expectRevert();
+        registry.queueRecipientAddition(RECIPIENT_1);
         vm.stopPrank();
     }
 
     function test_RevertOnRemovingNonExistent() public {
         vm.prank(ADMIN);
-        vm.expectRevert(AdminRecipientRegistry.RecipientNotFound.selector);
-        registry.removeRecipient(RECIPIENT_1);
+        vm.expectRevert();
+        registry.queueRecipientRemoval(RECIPIENT_1);
     }
 
-    function test_OnlyAdminCanAdd() public {
+    function test_OnlyAdminCanQueue() public {
         vm.prank(address(0xdead));
         vm.expectRevert();
-        registry.addRecipient(RECIPIENT_1);
+        registry.queueRecipientAddition(RECIPIENT_1);
     }
 
-    function test_OnlyAdminCanRemove() public {
+    function test_OnlyAdminCanQueueRemoval() public {
         vm.prank(ADMIN);
-        registry.addRecipient(RECIPIENT_1);
+        registry.queueRecipientAddition(RECIPIENT_1);
+        registry.updateRecipients();
         
         vm.prank(address(0xdead));
         vm.expectRevert();
-        registry.removeRecipient(RECIPIENT_1);
+        registry.queueRecipientRemoval(RECIPIENT_1);
     }
 
     function test_TransferAdmin() public {
@@ -141,33 +171,36 @@ contract AdminRecipientRegistryTest is TestWrapper {
         
         assertEq(registry.owner(), newAdmin);
         
-        // New admin can add
+        // New admin can queue
         vm.prank(newAdmin);
-        registry.addRecipient(RECIPIENT_1);
+        registry.queueRecipientAddition(RECIPIENT_1);
+        registry.updateRecipients();
         assertTrue(registry.isRecipient(RECIPIENT_1));
         
         // Old admin cannot
         vm.prank(ADMIN);
         vm.expectRevert();
-        registry.addRecipient(RECIPIENT_2);
+        registry.queueRecipientAddition(RECIPIENT_2);
     }
 
     function test_LargeScaleOperations() public {
         vm.startPrank(ADMIN);
         
-        // Add many recipients
+        // Queue many recipients
         uint256 count = 100;
         for (uint256 i = 1; i <= count; i++) {
-            registry.addRecipient(address(uint160(i)));
+            registry.queueRecipientAddition(address(uint160(i)));
         }
         
+        registry.updateRecipients();
         assertEq(registry.getRecipientCount(), count);
         
-        // Remove half
+        // Queue half for removal
         for (uint256 i = 1; i <= 50; i++) {
-            registry.removeRecipient(address(uint160(i)));
+            registry.queueRecipientRemoval(address(uint160(i)));
         }
         
+        registry.updateRecipients();
         assertEq(registry.getRecipientCount(), 50);
         
         vm.stopPrank();

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {console} from "forge-std/Test.sol";
 import {TestWrapper} from "./TestWrapper.sol";
 import {VotingRecipientRegistry} from "../src/modules/VotingRecipientRegistry.sol";
+import {BaseRecipientRegistry} from "../src/modules/BaseRecipientRegistry.sol";
 
 contract VotingRecipientRegistryTest is TestWrapper {
     VotingRecipientRegistry public registry;
@@ -220,13 +221,13 @@ contract VotingRecipientRegistryTest is TestWrapper {
 
     function test_RevertOnProposingExistingRecipient() public {
         vm.prank(RECIPIENT_1);
-        vm.expectRevert(VotingRecipientRegistry.RecipientAlreadyExists.selector);
+        vm.expectRevert(BaseRecipientRegistry.RecipientAlreadyExists.selector);
         registry.proposeAddition(RECIPIENT_2);
     }
 
     function test_RevertOnRemovingNonExistent() public {
         vm.prank(RECIPIENT_1);
-        vm.expectRevert(VotingRecipientRegistry.RecipientNotFound.selector);
+        vm.expectRevert(BaseRecipientRegistry.RecipientNotFound.selector);
         registry.proposeRemoval(NEW_RECIPIENT);
     }
 

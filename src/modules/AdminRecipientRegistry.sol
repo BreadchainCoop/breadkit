@@ -1,116 +1,74 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./BaseRecipientRegistry.sol";
 
 /// @title AdminRecipientRegistry
-/// @notice Simple admin-controlled registry for managing yield recipients
-/// @dev Admin can directly add or remove recipients without any voting or delays
-contract AdminRecipientRegistry is OwnableUpgradeable {
-    
-    // Active recipients
-    address[] public recipients;
-    
-    // Mapping to check if address is an active recipient
-    mapping(address => bool) public isRecipient;
-    
-    // Events
-    event RecipientAdded(address indexed recipient);
-    event RecipientRemoved(address indexed recipient);
-    
-    // Errors
-    error InvalidRecipient();
-    error RecipientAlreadyExists();
-    error RecipientNotFound();
+/// @notice Admin-controlled registry for managing yield recipients with queue-based updates
+/// @dev Admin can queue recipients for addition/removal, distributor manager processes the queue
+/// @dev This implementation provides centralized control where only the admin can modify recipients
+/// @author BreadKit Protocol
+contract AdminRecipientRegistry is BaseRecipientRegistry {
 
-    /// @notice Initialize the registry
-    /// @param admin The admin address
+    /// @notice Initialize the registry with an admin
+    /// @dev This function replaces the constructor for upgradeable contracts
+    /// @dev Sets the admin as the owner who can queue recipient changes
+    /// @dev Can only be called once due to the initializer modifier
+    /// @param admin The address that will have administrative control over the registry
     function initialize(address admin) public initializer {
         __Ownable_init(admin);
     }
 
-    /// @notice Add a recipient
-    /// @param recipient Address to add
-    function addRecipient(address recipient) external onlyOwner {
-        if (recipient == address(0)) revert InvalidRecipient();
-        if (isRecipient[recipient]) revert RecipientAlreadyExists();
-        
-        recipients.push(recipient);
-        isRecipient[recipient] = true;
-        
-        emit RecipientAdded(recipient);
+    /// @notice Queue a single recipient for addition to the registry
+    /// @dev Only the admin (owner) can call this function
+    /// @dev The recipient will be added when updateRecipients() is called
+    /// @dev Validates that the recipient is not the zero address and not already active
+    /// @dev Emits RecipientQueued event upon successful queuing
+    /// @param recipient The address to queue for addition to the recipient list
+    function queueRecipientAddition(address recipient) external override onlyOwner {
+        _queueRecipientAddition(recipient);
     }
 
-    /// @notice Add multiple recipients in one transaction
-    /// @param _recipients Array of addresses to add
-    function addRecipients(address[] calldata _recipients) external onlyOwner {
+    /// @notice Queue a single recipient for removal from the registry
+    /// @dev Only the admin (owner) can call this function
+    /// @dev The recipient will be removed when updateRecipients() is called
+    /// @dev Validates that the recipient is currently active and not already queued for removal
+    /// @dev Emits RecipientQueued event upon successful queuing
+    /// @param recipient The address to queue for removal from the recipient list
+    function queueRecipientRemoval(address recipient) external override onlyOwner {
+        _queueRecipientRemoval(recipient);
+    }
+
+    /// @notice Queue multiple recipients for addition in a single transaction
+    /// @dev Only the admin (owner) can call this function
+    /// @dev More gas efficient than calling queueRecipientAddition multiple times
+    /// @dev Each recipient is validated individually, failure of one stops the entire transaction
+    /// @dev Emits a RecipientQueued event for each successfully queued recipient
+    /// @param _recipients Array of addresses to queue for addition to the recipient list
+    function queueRecipientsAddition(address[] calldata _recipients) external onlyOwner {
         for (uint256 i = 0; i < _recipients.length; i++) {
-            address recipient = _recipients[i];
-            if (recipient == address(0)) revert InvalidRecipient();
-            if (isRecipient[recipient]) revert RecipientAlreadyExists();
-            
-            recipients.push(recipient);
-            isRecipient[recipient] = true;
-            
-            emit RecipientAdded(recipient);
+            _queueRecipientAddition(_recipients[i]);
         }
     }
 
-    /// @notice Remove a recipient
-    /// @param recipient Address to remove
-    function removeRecipient(address recipient) external onlyOwner {
-        if (!isRecipient[recipient]) revert RecipientNotFound();
-        
-        isRecipient[recipient] = false;
-        
-        // Remove from array
-        for (uint256 i = 0; i < recipients.length; i++) {
-            if (recipients[i] == recipient) {
-                recipients[i] = recipients[recipients.length - 1];
-                recipients.pop();
-                break;
-            }
-        }
-        
-        emit RecipientRemoved(recipient);
-    }
-
-    /// @notice Remove multiple recipients in one transaction
-    /// @param _recipients Array of addresses to remove
-    function removeRecipients(address[] calldata _recipients) external onlyOwner {
+    /// @notice Queue multiple recipients for removal in a single transaction
+    /// @dev Only the admin (owner) can call this function
+    /// @dev More gas efficient than calling queueRecipientRemoval multiple times
+    /// @dev Each recipient is validated individually, failure of one stops the entire transaction
+    /// @dev Emits a RecipientQueued event for each successfully queued recipient
+    /// @param _recipients Array of addresses to queue for removal from the recipient list
+    function queueRecipientsRemoval(address[] calldata _recipients) external onlyOwner {
         for (uint256 i = 0; i < _recipients.length; i++) {
-            address recipient = _recipients[i];
-            if (!isRecipient[recipient]) revert RecipientNotFound();
-            
-            isRecipient[recipient] = false;
-            
-            // Remove from array
-            for (uint256 j = 0; j < recipients.length; j++) {
-                if (recipients[j] == recipient) {
-                    recipients[j] = recipients[recipients.length - 1];
-                    recipients.pop();
-                    break;
-                }
-            }
-            
-            emit RecipientRemoved(recipient);
+            _queueRecipientRemoval(_recipients[i]);
         }
     }
 
-    /// @notice Get all active recipients
-    /// @return Array of active recipient addresses
-    function getRecipients() external view returns (address[] memory) {
-        return recipients;
-    }
-
-    /// @notice Get count of active recipients
-    /// @return Number of active recipients
-    function getRecipientCount() external view returns (uint256) {
-        return recipients.length;
-    }
-
-    /// @notice Transfer admin rights to a new address
-    /// @param newAdmin The new admin address
+    /// @notice Transfer administrative control to a new address
+    /// @dev Only the current admin (owner) can call this function
+    /// @dev The new admin will have full control over queuing recipients
+    /// @dev This action is irreversible, the current admin loses all control
+    /// @dev Uses OpenZeppelin's transferOwnership which includes zero address validation
+    /// @param newAdmin The address that will become the new admin of the registry
     function transferAdmin(address newAdmin) external onlyOwner {
         transferOwnership(newAdmin);
     }
