@@ -18,19 +18,19 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     /// @param _initialDivisor Initial divisor for distribution split
     constructor(uint256 _initialDivisor) {
         if (_initialDivisor == 0) revert InvalidDivisor();
-        
+
         strategyDivisor = _initialDivisor;
         _initializeOwner(msg.sender);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function calculateDistribution(uint256 totalYield) 
-        external 
-        view 
-        returns (uint256 fixedAmount, uint256 votedAmount) 
+    function calculateDistribution(uint256 totalYield)
+        external
+        view
+        returns (uint256 fixedAmount, uint256 votedAmount)
     {
         if (totalYield == 0) return (0, 0);
-        
+
         fixedAmount = totalYield / strategyDivisor;
         votedAmount = totalYield - fixedAmount;
     }
@@ -39,10 +39,10 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     function updateDistributionStrategy(uint256 newDivisor) external onlyOwner {
         if (newDivisor == 0) revert InvalidDivisor();
         if (newDivisor < MIN_STRATEGY_DIVISOR) revert DivisorTooSmall();
-        
+
         uint256 oldDivisor = strategyDivisor;
         strategyDivisor = newDivisor;
-        
+
         emit DistributionStrategyUpdated(oldDivisor, newDivisor);
     }
 

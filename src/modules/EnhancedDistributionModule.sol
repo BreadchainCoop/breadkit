@@ -90,10 +90,10 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     function _distributeFixedPortion(uint256 fixedAmount) internal {
         uint256 amountPerProject = fixedAmount / projects.length;
         uint256 distributed = 0;
-        
+
         for (uint256 i = 0; i < projects.length; i++) {
             uint256 projectShare;
-            
+
             // Last project gets remainder to handle rounding
             if (i == projects.length - 1) {
                 projectShare = fixedAmount - distributed;
@@ -101,7 +101,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
                 projectShare = amountPerProject;
                 distributed += projectShare;
             }
-            
+
             if (projectShare > 0) {
                 yieldToken.safeTransfer(projects[i], projectShare);
             }
