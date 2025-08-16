@@ -53,32 +53,8 @@ contract MockCycleManager is ICycleManager {
             return (false, new bytes(0));
         }
 
-        // All conditions met, return true with execution payload
-        return (true, abi.encodeWithSelector(this.executeDistribution.selector));
-    }
-
-    /// @notice Executes the distribution
-    /// @dev Handles all distribution logic
-    function executeDistribution() external override {
-        // Verify conditions again
-        require(block.number >= lastDistributionBlock + cycleLength, "Too soon");
-        require(currentVotes > 0, "No votes");
-        require(availableYield >= minYieldRequired, "Insufficient yield");
-        require(isEnabled, "System disabled");
-
-        // Update state
-        lastDistributionBlock = block.number;
-        currentCycleNumber++;
-
-        // Call distribution module to handle the actual distribution
-        distributionModule.distribute();
-
-        // Emit event
-        emit DistributionExecuted(block.number, availableYield, currentVotes);
-
-        // Reset for next cycle
-        currentVotes = 0;
-        availableYield = 0;
+        // All conditions met, return true with empty payload
+        return (true, new bytes(0));
     }
 
     /// @notice Checks if distribution is ready
@@ -98,8 +74,8 @@ contract MockCycleManager is ICycleManager {
 
     /// @notice Starts a new cycle (called after distribution)
     function startNewCycle() external override {
-        // This is handled in executeDistribution
-        // Kept for interface compatibility
+        // This would handle starting a new cycle
+        // Implementation depends on specific requirements
     }
 
     /// @notice Gets cycle information

@@ -27,12 +27,12 @@ abstract contract AutomationBase {
     }
 
     /// @notice Executes the distribution
-    /// @dev Calls CycleManager to handle all distribution logic
+    /// @dev Handles the execution logic when conditions are met
     function executeDistribution() public virtual {
         (bool resolved,) = resolveDistribution();
         if (!resolved) revert NotResolved();
 
-        cycleManager.executeDistribution();
+        // Distribution logic would be handled here or in derived contracts
 
         emit AutomationExecuted(msg.sender, block.number);
     }

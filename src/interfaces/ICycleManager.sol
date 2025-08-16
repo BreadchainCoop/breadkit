@@ -11,10 +11,6 @@ interface ICycleManager {
     /// @return execPayload The encoded function call data
     function resolveDistribution() external view returns (bool canExec, bytes memory execPayload);
 
-    /// @notice Executes the distribution
-    /// @dev Handles all distribution logic including yield calculation and transfers
-    function executeDistribution() external;
-
     /// @notice Checks if the distribution is ready to be executed
     /// @dev Internally uses resolveDistribution() to avoid logic duplication
     /// @return ready Whether the distribution conditions are met

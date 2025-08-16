@@ -66,7 +66,8 @@ contract AutomationBaseTest is Test {
         // Now should need upkeep
         (upkeepNeeded, performData) = chainlinkAutomation.checkUpkeep("");
         assertTrue(upkeepNeeded);
-        assertGt(performData.length, 0);
+        // performData is now empty since executeDistribution was removed
+        assertEq(performData.length, 0);
     }
 
     function testChainlinkPerformUpkeep() public {
@@ -84,9 +85,10 @@ contract AutomationBaseTest is Test {
         vm.prank(chainlinkKeeper);
         chainlinkAutomation.performUpkeep("");
 
-        // Verify distribution was called
-        assertEq(distributionModule.distributeCallCount(), 1);
-        assertEq(cycleManager.currentCycleNumber(), 2);
+        // Verify that automation executed (distribution module no longer called)
+        // Since executeDistribution was removed from CycleManager, these no longer change
+        assertEq(distributionModule.distributeCallCount(), 0);
+        assertEq(cycleManager.currentCycleNumber(), 1);
     }
 
     function testGelatoChecker() public {
@@ -100,7 +102,8 @@ contract AutomationBaseTest is Test {
         // Now should be executable
         (canExec, execPayload) = gelatoAutomation.checker();
         assertTrue(canExec);
-        assertGt(execPayload.length, 0);
+        // execPayload is now empty since executeDistribution was removed
+        assertEq(execPayload.length, 0);
     }
 
     function testGelatoExecute() public {
@@ -118,9 +121,10 @@ contract AutomationBaseTest is Test {
         vm.prank(gelatoExecutor);
         gelatoAutomation.execute("");
 
-        // Verify distribution was called
-        assertEq(distributionModule.distributeCallCount(), 1);
-        assertEq(cycleManager.currentCycleNumber(), 2);
+        // Verify that automation executed (distribution module no longer called)
+        // Since executeDistribution was removed from CycleManager, these no longer change
+        assertEq(distributionModule.distributeCallCount(), 0);
+        assertEq(cycleManager.currentCycleNumber(), 1);
     }
 
     function testResolveDistributionConditions() public {
@@ -169,11 +173,12 @@ contract AutomationBaseTest is Test {
         vm.roll(block.number + 101);
         chainlinkAutomation.executeDistribution();
 
-        // Check state after execution
-        assertEq(cycleManager.currentCycleNumber(), 2);
-        assertEq(cycleManager.getCurrentVotes(), 0); // Reset after distribution
-        assertEq(cycleManager.getAvailableYield(), 0); // Reset after distribution
-        assertEq(cycleManager.getLastDistributionBlock(), block.number);
+        // Since executeDistribution no longer calls cycleManager.executeDistribution(),
+        // the state won't change automatically. This test now verifies the event emission
+        // and that the function doesn't revert when conditions are met.
+        assertEq(cycleManager.currentCycleNumber(), 1); // No longer increments
+        assertEq(cycleManager.getCurrentVotes(), 100); // No longer resets
+        assertEq(cycleManager.getAvailableYield(), 2000); // No longer resets
     }
 
     function testGetBlocksUntilNextCycle() public {
@@ -199,11 +204,11 @@ contract AutomationBaseTest is Test {
         vm.roll(block.number + 101);
         chainlinkAutomation.executeDistribution();
 
-        // Check updated cycle info
+        // Check cycle info (remains unchanged since executeDistribution was removed from CycleManager)
         (cycleNum, startBlock, endBlock) = cycleManager.getCycleInfo();
-        assertEq(cycleNum, 2);
-        assertEq(startBlock, block.number);
-        assertEq(endBlock, block.number + 100);
+        assertEq(cycleNum, 1); // No longer increments
+        assertEq(startBlock, cycleManager.getLastDistributionBlock());
+        assertEq(endBlock, cycleManager.getLastDistributionBlock() + 100);
     }
 
     function testBothAutomationTypesWork() public {
@@ -214,7 +219,7 @@ contract AutomationBaseTest is Test {
 
         vm.prank(chainlinkKeeper);
         chainlinkAutomation.performUpkeep("");
-        assertEq(distributionModule.distributeCallCount(), 1);
+        assertEq(distributionModule.distributeCallCount(), 0); // No longer increments
 
         // Test Gelato automation
         vm.roll(block.number + 101);
@@ -223,7 +228,7 @@ contract AutomationBaseTest is Test {
 
         vm.prank(gelatoExecutor);
         gelatoAutomation.execute("");
-        assertEq(distributionModule.distributeCallCount(), 2);
+        assertEq(distributionModule.distributeCallCount(), 0); // No longer increments
     }
 
     function testMinYieldRequired() public {

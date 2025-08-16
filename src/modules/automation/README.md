@@ -20,8 +20,8 @@ The Automation Module provides an abstract base contract for creating provider-s
 
 2. **CycleManager Integration**
    - `resolveDistribution()`: Determines if distribution should occur
-   - `executeDistribution()`: Handles all distribution logic
    - Contains yield calculations, voting checks, and timing logic
+   - Distribution execution logic is handled by provider implementations
 
 3. **Provider Implementations**
    - Minimal contracts that inherit from AutomationBase
