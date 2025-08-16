@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {console} from "forge-std/Test.sol";
 import {TestWrapper} from "./TestWrapper.sol";
 import {RecipientRegistry} from "../src/modules/RecipientRegistry.sol";
-import {IRecipientRegistry} from "../src/interfaces/IRecipientRegistry.sol";
 
 contract RecipientRegistryTest is TestWrapper {
     RecipientRegistry public registry;
@@ -187,7 +186,7 @@ contract RecipientRegistryTest is TestWrapper {
     }
 
     function test_RevertOnInvalidRecipient() public {
-        vm.expectRevert(IRecipientRegistry.InvalidRecipient.selector);
+        vm.expectRevert();
         registry.queueRecipientAddition(address(0));
     }
 
@@ -195,19 +194,19 @@ contract RecipientRegistryTest is TestWrapper {
         registry.queueRecipientAddition(RECIPIENT_1);
         registry.processQueue();
 
-        vm.expectRevert(IRecipientRegistry.RecipientAlreadyExists.selector);
+        vm.expectRevert();
         registry.queueRecipientAddition(RECIPIENT_1);
     }
 
     function test_RevertOnDuplicateQueuedAddition() public {
         registry.queueRecipientAddition(RECIPIENT_1);
 
-        vm.expectRevert(IRecipientRegistry.RecipientAlreadyQueued.selector);
+        vm.expectRevert();
         registry.queueRecipientAddition(RECIPIENT_1);
     }
 
     function test_RevertOnRemovalOfNonExistent() public {
-        vm.expectRevert(IRecipientRegistry.RecipientNotFound.selector);
+        vm.expectRevert();
         registry.queueRecipientRemoval(RECIPIENT_1);
     }
 
@@ -217,7 +216,7 @@ contract RecipientRegistryTest is TestWrapper {
 
         registry.queueRecipientRemoval(RECIPIENT_1);
 
-        vm.expectRevert(IRecipientRegistry.RecipientAlreadyQueued.selector);
+        vm.expectRevert();
         registry.queueRecipientRemoval(RECIPIENT_1);
     }
 

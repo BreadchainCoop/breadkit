@@ -108,7 +108,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @dev Only existing recipients can call this function
     /// @dev The proposer automatically votes for their own proposal
     /// @param recipient Address to propose for addition to the recipient list
-    function queueRecipientAddition(address recipient) external override {
+    function queueRecipientAddition(address recipient) external {
         proposeAddition(recipient);
     }
 
@@ -117,7 +117,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @dev Only existing recipients can call this function
     /// @dev The proposer automatically votes for their own proposal
     /// @param recipient Address to propose for removal from the recipient list
-    function queueRecipientRemoval(address recipient) external override {
+    function queueRecipientRemoval(address recipient) external {
         proposeRemoval(recipient);
     }
 
@@ -232,13 +232,13 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         proposal.executed = true;
 
         if (proposal.isAddition) {
-            _queueRecipientAddition(proposal.candidate);
+            _queueForAddition(proposal.candidate);
         } else {
-            _queueRecipientRemoval(proposal.candidate);
+            _queueForRemoval(proposal.candidate);
         }
 
         // Automatically process the queue after successful voting
-        _updateRecipients();
+        _processQueue();
 
         emit ProposalExecuted(proposalId);
     }

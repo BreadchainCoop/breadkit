@@ -55,12 +55,13 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     /// @notice Thrown when attempting to queue a recipient that is already queued
     error RecipientAlreadyQueued();
 
-    /// @notice Queue a recipient for addition
+    /// @notice Internal function to queue a recipient for addition
     /// @param recipient Address to add to the queue
-    /// @dev This is an internal function that can be called by derived contracts
+    /// @dev This is an internal function that should be called by derived contracts
     /// @dev Validates the recipient address and checks for duplicates before queuing
     /// @dev Emits RecipientQueued event with isAddition=true
-    function _queueRecipientAddition(address recipient) internal {
+    /// @dev Access control should be implemented in the calling public function
+    function _queueForAddition(address recipient) internal {
         if (recipient == address(0)) revert InvalidRecipient();
         if (isRecipient[recipient]) revert RecipientAlreadyExists();
 
@@ -75,12 +76,13 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         emit RecipientQueued(recipient, true);
     }
 
-    /// @notice Queue a recipient for removal
+    /// @notice Internal function to queue a recipient for removal
     /// @param recipient Address to remove from the active recipients
-    /// @dev This is an internal function that can be called by derived contracts
+    /// @dev This is an internal function that should be called by derived contracts
     /// @dev Validates that the recipient exists and isn't already queued for removal
     /// @dev Emits RecipientQueued event with isAddition=false
-    function _queueRecipientRemoval(address recipient) internal {
+    /// @dev Access control should be implemented in the calling public function
+    function _queueForRemoval(address recipient) internal {
         if (!isRecipient[recipient]) revert RecipientNotFound();
 
         // Check if already queued for removal to prevent duplicates
@@ -96,14 +98,15 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
 
     /// @notice Process all queued changes and update recipients
     /// @dev This function can be called by the distributor manager or anyone
-    function updateRecipients() external {
-        _updateRecipients();
+    /// @dev This is the main external interface for processing pending recipient changes
+    function processQueue() external {
+        _processQueue();
     }
 
-    /// @notice Internal function to update recipients based on queued changes
+    /// @notice Internal function to process the queue and update recipients
     /// @dev Processes all queued additions and removals, then clears the queues
     /// @dev Emits RecipientAdded/RecipientRemoved for each change and QueueProcessed at the end
-    function _updateRecipients() internal {
+    function _processQueue() internal {
         uint256 addedCount = queuedRecipientsForAddition.length;
         uint256 removedCount = 0;
 
@@ -215,13 +218,4 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         return false;
     }
 
-    /// @notice Abstract function for queuing recipient addition
-    /// @param recipient Address to queue for addition
-    /// @dev Must be implemented by derived contracts to define access control
-    function queueRecipientAddition(address recipient) external virtual;
-
-    /// @notice Abstract function for queuing recipient removal
-    /// @param recipient Address to queue for removal
-    /// @dev Must be implemented by derived contracts to define access control
-    function queueRecipientRemoval(address recipient) external virtual;
 }
