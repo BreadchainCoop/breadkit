@@ -217,5 +217,4 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         }
         return false;
     }
-
 }
