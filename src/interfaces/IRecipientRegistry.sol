@@ -7,21 +7,20 @@ pragma solidity ^0.8.20;
 /// @dev Implementations may vary in access control (admin vs voting) but must support queueing
 /// @author BreadKit Protocol
 interface IRecipientRegistry {
-    
     // Events
     /// @notice Emitted when a recipient is queued for addition or removal
     /// @param recipient The address being queued
     /// @param isAddition True if queued for addition, false for removal
     event RecipientQueued(address indexed recipient, bool isAddition);
-    
+
     /// @notice Emitted when a recipient is successfully added to the active list
     /// @param recipient The address of the newly added recipient
     event RecipientAdded(address indexed recipient);
-    
+
     /// @notice Emitted when a recipient is successfully removed from the active list
     /// @param recipient The address of the removed recipient
     event RecipientRemoved(address indexed recipient);
-    
+
     /// @notice Emitted when the queue is processed and recipients are updated
     /// @param added Number of recipients added in this processing
     /// @param removed Number of recipients removed in this processing
@@ -30,13 +29,13 @@ interface IRecipientRegistry {
     // Errors
     /// @notice Thrown when attempting to use the zero address as a recipient
     error InvalidRecipient();
-    
+
     /// @notice Thrown when attempting to add a recipient that already exists
     error RecipientAlreadyExists();
-    
+
     /// @notice Thrown when attempting to remove a recipient that doesn't exist
     error RecipientNotFound();
-    
+
     /// @notice Thrown when attempting to queue a recipient that is already queued
     error RecipientAlreadyQueued();
 
