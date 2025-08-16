@@ -2,8 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
-import {IVotingModule} from "../interfaces/IVotingModule.sol";
-import {IYieldModule} from "../interfaces/IYieldModule.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -12,7 +10,7 @@ import {Ownable} from "@solady/contracts/auth/Ownable.sol";
 
 /// @title DistributionManager
 /// @notice Abstract contract that orchestrates the entire distribution process
-/// @dev Consolidates all distribution logic and coordinates with other modules
+/// @dev Consolidates all distribution logic and provides hooks for module integration
 abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, Pausable, Ownable {
     using SafeERC20 for IERC20;
 
@@ -22,28 +20,22 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     error DistributionNotResolved();
     error InsufficientYield();
     error NoRecipients();
-    error ArrayLengthMismatch();
     error CycleNotComplete();
     error OnlyEmergencyAdmin();
-    error TransferFailed();
 
     uint256 private constant PRECISION = 1e18;
 
     address public emergencyAdmin;
-    address public votingModule;
-    address public fixedSplitModule;
-    address public recipientRegistry;
-    address public yieldCollector;
     address public yieldToken;
-
+    
     uint256 public cycleLength;
     uint256 public yieldFixedSplitDivisor;
     uint256 public lastDistributionBlock;
     uint256 public cycleNumber;
 
     address[] public recipients;
-    uint256[] public recipientVotedDistributions;
-    uint256[] public recipientFixedDistributions;
+    uint256[] public currentVotes;
+    uint256 public totalVotes;
 
     mapping(uint256 => DistributionState) public distributionHistory;
 
@@ -77,28 +69,36 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     /// @inheritdoc IDistributionModule
     function distributeYield() external override nonReentrant whenNotPaused {
-        (bool canDistribute, string memory reason) = validateDistribution();
+        (bool canDistribute,) = validateDistribution();
         if (!canDistribute) revert DistributionNotResolved();
 
+        // Hook for token minting before distribution
         _mintTokensBeforeDistribution();
 
+        // Collect yield
         uint256 totalYield = _collectYield();
         if (totalYield == 0) revert InsufficientYield();
 
+        // Calculate splits
         (uint256 fixedAmount, uint256 votedAmount) = _calculateSplits(totalYield);
 
-        (uint256[] memory votes, uint256 totalVotes) = _getVotingResults();
+        // Get distribution data
         address[] memory activeRecipients = _getActiveRecipients();
-        
         if (activeRecipients.length == 0) revert NoRecipients();
 
+        uint256[] memory votes = _getVotingResults();
+        
+        // Calculate distributions
         uint256[] memory votedDistributions = _calculateVotedDistributions(votes, totalVotes, votedAmount);
         uint256[] memory fixedDistributions = _calculateFixedDistributions(activeRecipients, fixedAmount);
 
+        // Execute distributions
         _executeDistributions(activeRecipients, votedDistributions, fixedDistributions);
 
+        // Complete cycle
         _completeCycleTransition();
 
+        // Record distribution
         _recordDistribution(totalYield, totalVotes, activeRecipients, votedDistributions, fixedDistributions);
 
         emit YieldDistributed(totalYield, totalVotes, activeRecipients, votedDistributions, fixedDistributions);
@@ -108,12 +108,12 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     function getCurrentDistributionState() external view override returns (DistributionState memory state) {
         state.totalYield = _getAvailableYield();
         (state.fixedAmount, state.votedAmount) = _calculateSplits(state.totalYield);
-        (, state.totalVotes) = _getVotingResults();
+        state.totalVotes = totalVotes;
         state.lastDistributionBlock = lastDistributionBlock;
         state.cycleNumber = cycleNumber;
         state.recipients = recipients;
-        state.votedDistributions = recipientVotedDistributions;
-        state.fixedDistributions = recipientFixedDistributions;
+        state.votedDistributions = new uint256[](recipients.length);
+        state.fixedDistributions = new uint256[](recipients.length);
     }
 
     /// @inheritdoc IDistributionModule
@@ -136,7 +136,6 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
             return (false, "No active recipients");
         }
 
-        (, uint256 totalVotes) = _getVotingResults();
         if (totalVotes == 0) {
             return (false, "No votes cast");
         }
@@ -188,30 +187,6 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         yieldFixedSplitDivisor = _divisor;
     }
 
-    /// @inheritdoc IDistributionModule
-    function setVotingModule(address _votingModule) external override onlyOwner {
-        if (_votingModule == address(0)) revert ZeroAddress();
-        votingModule = _votingModule;
-    }
-
-    /// @inheritdoc IDistributionModule
-    function setFixedSplitModule(address _fixedSplitModule) external override onlyOwner {
-        if (_fixedSplitModule == address(0)) revert ZeroAddress();
-        fixedSplitModule = _fixedSplitModule;
-    }
-
-    /// @inheritdoc IDistributionModule
-    function setRecipientRegistry(address _recipientRegistry) external override onlyOwner {
-        if (_recipientRegistry == address(0)) revert ZeroAddress();
-        recipientRegistry = _recipientRegistry;
-    }
-
-    /// @inheritdoc IDistributionModule
-    function setYieldCollector(address _yieldCollector) external override onlyOwner {
-        if (_yieldCollector == address(0)) revert ZeroAddress();
-        yieldCollector = _yieldCollector;
-    }
-
     /// @notice Sets the emergency admin
     /// @param _emergencyAdmin Address of the emergency admin
     function setEmergencyAdmin(address _emergencyAdmin) external onlyOwner {
@@ -219,23 +194,22 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         emergencyAdmin = _emergencyAdmin;
     }
 
-    /// @notice Mints tokens before distribution if needed
+    /// @notice Hook for minting tokens before distribution
     function _mintTokensBeforeDistribution() internal virtual;
 
-    /// @notice Collects yield from all sources
+    /// @notice Hook for collecting yield
     /// @return Total yield collected
     function _collectYield() internal virtual returns (uint256);
 
-    /// @notice Gets available yield amount
+    /// @notice Hook for getting available yield
     /// @return Available yield
     function _getAvailableYield() internal view virtual returns (uint256);
 
-    /// @notice Gets voting results from voting module
+    /// @notice Hook for getting voting results
     /// @return votes Array of votes per recipient
-    /// @return totalVotes Total votes cast
-    function _getVotingResults() internal view virtual returns (uint256[] memory votes, uint256 totalVotes);
+    function _getVotingResults() internal view virtual returns (uint256[] memory votes);
 
-    /// @notice Gets active recipients from registry
+    /// @notice Hook for getting active recipients
     /// @return Array of active recipient addresses
     function _getActiveRecipients() internal view virtual returns (address[] memory);
 
@@ -255,15 +229,15 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     /// @notice Calculates voted distributions for recipients
     /// @param votes Array of votes per recipient
-    /// @param totalVotes Total votes cast
+    /// @param _totalVotes Total votes cast
     /// @param totalAmount Total amount to distribute
     /// @return distributions Array of distribution amounts
     function _calculateVotedDistributions(
         uint256[] memory votes,
-        uint256 totalVotes,
+        uint256 _totalVotes,
         uint256 totalAmount
     ) internal pure returns (uint256[] memory distributions) {
-        if (votes.length == 0 || totalVotes == 0 || totalAmount == 0) {
+        if (votes.length == 0 || _totalVotes == 0 || totalAmount == 0) {
             return new uint256[](0);
         }
         
@@ -272,11 +246,12 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         
         for (uint256 i = 0; i < votes.length; i++) {
             if (votes[i] > 0) {
-                distributions[i] = (votes[i] * totalAmount * PRECISION) / (totalVotes * PRECISION);
+                distributions[i] = (votes[i] * totalAmount * PRECISION) / (_totalVotes * PRECISION);
                 distributed += distributions[i];
             }
         }
         
+        // Handle rounding remainder
         if (distributed < totalAmount) {
             uint256 remainder = totalAmount - distributed;
             for (uint256 i = 0; i < distributions.length; i++) {
@@ -349,33 +324,30 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         lastDistributionBlock = block.number;
         cycleNumber++;
         
-        recipients = _getActiveRecipients();
-        recipientVotedDistributions = new uint256[](recipients.length);
-        recipientFixedDistributions = new uint256[](recipients.length);
+        // Reset voting state
+        delete currentVotes;
+        totalVotes = 0;
         
-        _resetVotingState();
-        _processQueuedRecipientChanges();
+        // Process any queued changes via hooks
+        _processQueuedChanges();
         
         emit CycleCompleted(cycleNumber, block.number);
     }
 
-    /// @notice Resets voting state for next cycle
-    function _resetVotingState() internal virtual;
-
-    /// @notice Processes any queued recipient changes
-    function _processQueuedRecipientChanges() internal virtual;
+    /// @notice Hook for processing queued changes
+    function _processQueuedChanges() internal virtual;
 
     /// @notice Records distribution in history
     function _recordDistribution(
         uint256 totalYield,
-        uint256 totalVotes,
+        uint256 _totalVotes,
         address[] memory activeRecipients,
         uint256[] memory votedDistributions,
         uint256[] memory fixedDistributions
     ) internal {
         DistributionState storage state = distributionHistory[cycleNumber];
         state.totalYield = totalYield;
-        state.totalVotes = totalVotes;
+        state.totalVotes = _totalVotes;
         state.lastDistributionBlock = block.number;
         state.cycleNumber = cycleNumber;
         state.recipients = activeRecipients;

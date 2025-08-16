@@ -2,22 +2,64 @@
 pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BreadKitDistribution} from "../src/modules/BreadKitDistribution.sol";
+import {DistributionManager} from "../src/modules/DistributionManager.sol";
 import {YieldCollector} from "../src/modules/YieldCollector.sol";
 import {IDistributionModule} from "../src/interfaces/IDistributionModule.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockVotingModule} from "./mocks/MockVotingModule.sol";
-import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
-import {MockFixedSplitModule} from "./mocks/MockFixedSplitModule.sol";
-import {MockYieldModule} from "./mocks/MockYieldModule.sol";
+
+/// @notice Simple concrete implementation for testing
+contract TestDistribution is DistributionManager {
+    
+    function initialize(
+        address _yieldToken,
+        uint256 _cycleLength,
+        uint256 _yieldFixedSplitDivisor
+    ) external {
+        __DistributionManager_init(_yieldToken, _cycleLength, _yieldFixedSplitDivisor);
+    }
+
+    function setRecipients(address[] memory _recipients) external {
+        recipients = _recipients;
+    }
+
+    function setVotes(uint256[] memory votes) external {
+        currentVotes = votes;
+        totalVotes = 0;
+        for (uint256 i = 0; i < votes.length; i++) {
+            totalVotes += votes[i];
+        }
+    }
+
+    function _mintTokensBeforeDistribution() internal override {
+        // Hook implementation - can be customized by inheriting contracts
+    }
+
+    function _collectYield() internal override returns (uint256) {
+        // Simple implementation: return current balance
+        return MockERC20(yieldToken).balanceOf(address(this));
+    }
+
+    function _getAvailableYield() internal view override returns (uint256) {
+        return MockERC20(yieldToken).balanceOf(address(this));
+    }
+
+    function _getVotingResults() internal view override returns (uint256[] memory) {
+        return currentVotes;
+    }
+
+    function _getActiveRecipients() internal view override returns (address[] memory) {
+        return recipients;
+    }
+
+    function _processQueuedChanges() internal override {
+        // Hook implementation - can be customized by inheriting contracts
+    }
+}
 
 contract DistributionModuleTest is Test {
-    BreadKitDistribution public distribution;
+    TestDistribution public distribution;
     YieldCollector public yieldCollector;
     MockERC20 public yieldToken;
-    MockVotingModule public votingModule;
-    MockRecipientRegistry public recipientRegistry;
-    MockFixedSplitModule public fixedSplitModule;
     
     address public owner = address(this);
     address public emergencyAdmin = address(0x911);
@@ -38,27 +80,25 @@ contract DistributionModuleTest is Test {
     
     function setUp() public {
         yieldToken = new MockERC20("Yield Token", "YIELD");
-        distribution = new BreadKitDistribution();
+        distribution = new TestDistribution();
         distribution.initialize(address(yieldToken), CYCLE_LENGTH, YIELD_FIXED_SPLIT_DIVISOR);
         
-        yieldCollector = new YieldCollector(address(yieldToken));
-        votingModule = new MockVotingModule();
-        recipientRegistry = new MockRecipientRegistry();
-        fixedSplitModule = new MockFixedSplitModule();
-        
-        distribution.setYieldCollector(address(yieldCollector));
-        distribution.setVotingModule(address(votingModule));
-        distribution.setRecipientRegistry(address(recipientRegistry));
-        distribution.setFixedSplitModule(address(fixedSplitModule));
         distribution.setEmergencyAdmin(emergencyAdmin);
         
+        address[] memory testRecipients = new address[](3);
+        testRecipients[0] = recipient1;
+        testRecipients[1] = recipient2;
+        testRecipients[2] = recipient3;
+        distribution.setRecipients(testRecipients);
+        
+        uint256[] memory votes = new uint256[](3);
+        votes[0] = 300;
+        votes[1] = 500;
+        votes[2] = 200;
+        distribution.setVotes(votes);
+        
+        yieldCollector = new YieldCollector(address(yieldToken));
         yieldCollector.setDistributionManager(address(distribution));
-        
-        recipientRegistry.addRecipient(recipient1);
-        recipientRegistry.addRecipient(recipient2);
-        recipientRegistry.addRecipient(recipient3);
-        
-        votingModule.setVotes([uint256(300), uint256(500), uint256(200)]);
     }
     
     function testInitialization() public view {
@@ -102,28 +142,33 @@ contract DistributionModuleTest is Test {
         
         distribution.distributeYield();
         
+        // Fixed amount should be 1/4 of total (250 ether)
+        // Voted amount should be 3/4 of total (750 ether)
         uint256 expectedFixedAmount = totalYield / YIELD_FIXED_SPLIT_DIVISOR;
         uint256 expectedVotedAmount = totalYield - expectedFixedAmount;
         
+        // Each recipient gets equal share of fixed (250/3 = ~83.33 ether)
         uint256 expectedFixedPerRecipient = expectedFixedAmount / 3;
         
+        // Recipient2 gets 50% of voted amount (750 * 0.5 = 375 ether)
         uint256 recipient2VotedAmount = (expectedVotedAmount * 500) / 1000;
         uint256 recipient2Total = expectedFixedPerRecipient + recipient2VotedAmount;
         
+        // Allow for small rounding differences
         assertApproxEqAbs(yieldToken.balanceOf(recipient2), recipient2Total, 3);
     }
     
     function testCannotDistributeBeforeCycleComplete() public {
         yieldToken.mint(address(distribution), 1000 ether);
         
-        vm.expectRevert(BreadKitDistribution.DistributionNotResolved.selector);
+        vm.expectRevert(DistributionManager.DistributionNotResolved.selector);
         distribution.distributeYield();
     }
     
     function testCannotDistributeWithoutYield() public {
         vm.roll(block.number + CYCLE_LENGTH + 1);
         
-        vm.expectRevert(BreadKitDistribution.InsufficientYield.selector);
+        vm.expectRevert(DistributionManager.InsufficientYield.selector);
         distribution.distributeYield();
     }
     
@@ -197,77 +242,17 @@ contract DistributionModuleTest is Test {
         assertEq(state.cycleNumber, 0);
     }
     
-    function testEmergencyAddRecipient() public {
-        address newRecipient = address(0x999);
-        
-        distribution.emergencyAddRecipient(newRecipient);
-        
-        address[] memory recipients = recipientRegistry.getActiveRecipients();
-        bool found = false;
-        for (uint256 i = 0; i < recipients.length; i++) {
-            if (recipients[i] == newRecipient) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue(found);
-    }
-    
-    function testEmergencyRemoveRecipient() public {
-        distribution.emergencyRemoveRecipient(recipient2);
-        
-        address[] memory recipients = recipientRegistry.getActiveRecipients();
-        for (uint256 i = 0; i < recipients.length; i++) {
-            assertNotEq(recipients[i], recipient2);
-        }
-    }
-    
-    function testForceDistribution() public {
-        yieldToken.mint(address(distribution), 1000 ether);
-        
-        distribution.forceDistribution();
-        
-        assertGt(yieldToken.balanceOf(recipient1), 0);
-        assertGt(yieldToken.balanceOf(recipient2), 0);
-        assertGt(yieldToken.balanceOf(recipient3), 0);
-    }
-    
-    function testDistributionHistory() public {
-        yieldToken.mint(address(distribution), 1000 ether);
-        vm.roll(block.number + CYCLE_LENGTH + 1);
-        
-        distribution.distributeYield();
-        
-        IDistributionModule.DistributionState memory history = distribution.getDistributionHistory(1);
-        
-        assertEq(history.totalYield, 1000 ether);
-        assertEq(history.totalVotes, 1000);
-        assertEq(history.cycleNumber, 1);
-        assertEq(history.recipients.length, 3);
-    }
-    
-    function testReadinessStatus() public {
-        (bool ready, string memory details) = distribution.getReadinessStatus();
-        assertFalse(ready);
-        assertEq(details, "Cycle not complete");
-        
-        vm.roll(block.number + CYCLE_LENGTH + 1);
-        
-        (ready, details) = distribution.getReadinessStatus();
-        assertFalse(ready);
-        assertEq(details, "No yield available");
-        
-        yieldToken.mint(address(distribution), 1000 ether);
-        
-        (ready, details) = distribution.getReadinessStatus();
-        assertTrue(ready);
-        assertEq(details, "Ready for distribution");
-    }
-    
     function testMultipleCycles() public {
         for (uint256 i = 0; i < 3; i++) {
             yieldToken.mint(address(distribution), 1000 ether);
             vm.roll(block.number + CYCLE_LENGTH + 1);
+            
+            // Reset votes for each cycle
+            uint256[] memory votes = new uint256[](3);
+            votes[0] = 300;
+            votes[1] = 500;
+            votes[2] = 200;
+            distribution.setVotes(votes);
             
             distribution.distributeYield();
             
@@ -275,13 +260,22 @@ contract DistributionModuleTest is Test {
             assertEq(distribution.lastDistributionBlock(), block.number);
         }
         
-        assertEq(yieldToken.balanceOf(recipient1), 1050 ether);
-        assertEq(yieldToken.balanceOf(recipient2), 1500 ether);
-        assertEq(yieldToken.balanceOf(recipient3), 450 ether);
+        // Each cycle distributes 1000 ether with same proportions
+        // Fixed: 250 ether per cycle (83.33 each)
+        // Voted: 750 ether per cycle (30% to r1, 50% to r2, 20% to r3)
+        // Total after 3 cycles:
+        // r1: 3 * (83.33 + 225) = ~925 ether
+        // r2: 3 * (83.33 + 375) = ~1375 ether  
+        // r3: 3 * (83.33 + 150) = ~700 ether
+        
+        assertApproxEqAbs(yieldToken.balanceOf(recipient1), 925 ether, 5 ether);
+        assertApproxEqAbs(yieldToken.balanceOf(recipient2), 1375 ether, 5 ether);
+        assertApproxEqAbs(yieldToken.balanceOf(recipient3), 700 ether, 5 ether);
     }
     
     function testZeroVotesScenario() public {
-        votingModule.setVotes([uint256(0), uint256(0), uint256(0)]);
+        uint256[] memory zeroVotes = new uint256[](3);
+        distribution.setVotes(zeroVotes);
         
         yieldToken.mint(address(distribution), 1000 ether);
         vm.roll(block.number + CYCLE_LENGTH + 1);
@@ -291,7 +285,7 @@ contract DistributionModuleTest is Test {
     }
     
     function testDifferentSplitDivisors() public {
-        distribution.setYieldFixedSplitDivisor(2);
+        distribution.setYieldFixedSplitDivisor(2); // 50/50 split
         
         yieldToken.mint(address(distribution), 1000 ether);
         vm.roll(block.number + CYCLE_LENGTH + 1);

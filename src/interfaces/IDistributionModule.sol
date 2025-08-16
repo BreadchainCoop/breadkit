@@ -63,24 +63,4 @@ interface IDistributionModule {
     /// @dev Determines the portion allocated to fixed distribution
     /// @param _divisor The divisor for fixed split calculation
     function setYieldFixedSplitDivisor(uint256 _divisor) external;
-
-    /// @notice Sets the voting module address
-    /// @dev Connects the distribution module to the voting system
-    /// @param _votingModule Address of the voting module
-    function setVotingModule(address _votingModule) external;
-
-    /// @notice Sets the fixed split module address
-    /// @dev Connects the distribution module to the fixed split system
-    /// @param _fixedSplitModule Address of the fixed split module
-    function setFixedSplitModule(address _fixedSplitModule) external;
-
-    /// @notice Sets the recipient registry address
-    /// @dev Connects the distribution module to the recipient management system
-    /// @param _recipientRegistry Address of the recipient registry
-    function setRecipientRegistry(address _recipientRegistry) external;
-
-    /// @notice Sets the yield collector address
-    /// @dev Connects the distribution module to the yield collection system
-    /// @param _yieldCollector Address of the yield collector
-    function setYieldCollector(address _yieldCollector) external;
 }
