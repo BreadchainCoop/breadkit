@@ -25,6 +25,17 @@ contract CycleManager is ICycleManager {
 
     /// @notice Error thrown when cycle transition is invalid
     error InvalidCycleTransition();
+    /// @notice Emitted when an address authorization status changes
+    /// @param account The address whose authorization was updated
+    /// @param isAuthorized The new authorization status
+    event AuthorizationUpdated(address indexed account, bool isAuthorized);
+
+    /// @notice Initializes the contract and authorizes the deployer
+    constructor() {
+        authorized[msg.sender] = true;
+        emit AuthorizationUpdated(msg.sender, true);
+    }
+
 
     /// @notice Modifier to restrict access to authorized addresses
     modifier onlyAuthorized() {
@@ -40,6 +51,14 @@ contract CycleManager is ICycleManager {
             revert CycleModuleNotSet();
         }
         _;
+    }
+
+    /// @notice Adds or removes an authorized address
+    /// @param account The address to update
+    /// @param isAuthorized The authorization status to set
+    function setAuthorization(address account, bool isAuthorized) external onlyAuthorized {
+        authorized[account] = isAuthorized;
+        emit AuthorizationUpdated(account, isAuthorized);
     }
 
     /// @inheritdoc ICycleManager
