@@ -30,31 +30,14 @@ contract MockCycleManager is ICycleManager {
         minYieldRequired = 1000; // Example minimum yield
     }
 
-    /// @notice Resolves whether distribution should occur
-    /// @dev Implements the same logic as Breadchain's resolveYieldDistribution
-    function resolveDistribution() external view override returns (bool canExec, bytes memory execPayload) {
-        // Check if enough blocks have passed
-        if (block.number < lastDistributionBlock + cycleLength) {
-            return (false, new bytes(0));
+    /// @notice Gets the automation data for execution
+    /// @dev Returns encoded function call data for automation providers
+    function getAutomationData() external view override returns (bytes memory execPayload) {
+        // Return the execution payload if conditions are met
+        if (isDistributionReady()) {
+            return abi.encodeWithSelector(this.executeDistribution.selector);
         }
-
-        // Check if there are votes
-        if (currentVotes == 0) {
-            return (false, new bytes(0));
-        }
-
-        // Check if there's sufficient yield
-        if (availableYield < minYieldRequired) {
-            return (false, new bytes(0));
-        }
-
-        // Check if system is enabled
-        if (!isEnabled) {
-            return (false, new bytes(0));
-        }
-
-        // All conditions met, return true with execution payload
-        return (true, abi.encodeWithSelector(this.executeDistribution.selector));
+        return new bytes(0);
     }
 
     /// @notice Executes the distribution
@@ -82,9 +65,28 @@ contract MockCycleManager is ICycleManager {
     }
 
     /// @notice Checks if distribution is ready
-    function isDistributionReady() external view override returns (bool ready) {
-        (bool canExec,) = this.resolveDistribution();
-        return canExec;
+    function isDistributionReady() public view override returns (bool ready) {
+        // Check if enough blocks have passed
+        if (block.number < lastDistributionBlock + cycleLength) {
+            return false;
+        }
+
+        // Check if there are votes
+        if (currentVotes == 0) {
+            return false;
+        }
+
+        // Check if there's sufficient yield
+        if (availableYield < minYieldRequired) {
+            return false;
+        }
+
+        // Check if system is enabled
+        if (!isEnabled) {
+            return false;
+        }
+
+        return true;
     }
 
     /// @notice Gets blocks until next cycle
@@ -126,16 +128,6 @@ contract MockCycleManager is ICycleManager {
     /// @notice Gets the last distribution block
     function getLastDistributionBlock() external view override returns (uint256) {
         return lastDistributionBlock;
-    }
-
-    /// @notice Gets current votes
-    function getCurrentVotes() external view override returns (uint256) {
-        return currentVotes;
-    }
-
-    /// @notice Gets available yield
-    function getAvailableYield() external view override returns (uint256) {
-        return availableYield;
     }
 
     // Mock functions for testing

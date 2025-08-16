@@ -125,32 +125,36 @@ contract AutomationBaseTest is Test {
 
     function testResolveDistributionConditions() public {
         // Test: Not enough blocks passed
-        (bool canExec,) = chainlinkAutomation.resolveDistribution();
-        assertFalse(canExec);
+        bool isReady = chainlinkAutomation.isDistributionReady();
+        assertFalse(isReady);
 
         vm.roll(block.number + 101);
 
         // Test: No votes
         cycleManager.setCurrentVotes(0);
-        (canExec,) = chainlinkAutomation.resolveDistribution();
-        assertFalse(canExec);
+        isReady = chainlinkAutomation.isDistributionReady();
+        assertFalse(isReady);
 
         // Test: Insufficient yield
         cycleManager.setCurrentVotes(100);
         cycleManager.setAvailableYield(500);
-        (canExec,) = chainlinkAutomation.resolveDistribution();
-        assertFalse(canExec);
+        isReady = chainlinkAutomation.isDistributionReady();
+        assertFalse(isReady);
 
         // Test: System disabled
         cycleManager.setAvailableYield(2000);
         cycleManager.setEnabled(false);
-        (canExec,) = chainlinkAutomation.resolveDistribution();
-        assertFalse(canExec);
+        isReady = chainlinkAutomation.isDistributionReady();
+        assertFalse(isReady);
 
         // Test: All conditions met
         cycleManager.setEnabled(true);
-        (canExec,) = chainlinkAutomation.resolveDistribution();
-        assertTrue(canExec);
+        isReady = chainlinkAutomation.isDistributionReady();
+        assertTrue(isReady);
+
+        // Test automation data is returned when ready
+        bytes memory data = chainlinkAutomation.getAutomationData();
+        assertGt(data.length, 0);
     }
 
     function testExecutionRevertsWhenNotResolved() public {
@@ -162,8 +166,8 @@ contract AutomationBaseTest is Test {
     function testCycleManagerIntegration() public {
         // Check initial state
         assertEq(cycleManager.currentCycleNumber(), 1);
-        assertEq(cycleManager.getCurrentVotes(), 100);
-        assertEq(cycleManager.getAvailableYield(), 2000);
+        assertEq(cycleManager.currentVotes(), 100);
+        assertEq(cycleManager.availableYield(), 2000);
 
         // Advance and execute
         vm.roll(block.number + 101);
@@ -171,8 +175,8 @@ contract AutomationBaseTest is Test {
 
         // Check state after execution
         assertEq(cycleManager.currentCycleNumber(), 2);
-        assertEq(cycleManager.getCurrentVotes(), 0); // Reset after distribution
-        assertEq(cycleManager.getAvailableYield(), 0); // Reset after distribution
+        assertEq(cycleManager.currentVotes(), 0); // Reset after distribution
+        assertEq(cycleManager.availableYield(), 0); // Reset after distribution
         assertEq(cycleManager.getLastDistributionBlock(), block.number);
     }
 
@@ -231,12 +235,12 @@ contract AutomationBaseTest is Test {
 
         // Set yield below minimum
         cycleManager.setAvailableYield(999);
-        (bool canExec,) = chainlinkAutomation.resolveDistribution();
-        assertFalse(canExec);
+        bool isReady = chainlinkAutomation.isDistributionReady();
+        assertFalse(isReady);
 
         // Set yield at minimum
         cycleManager.setAvailableYield(1000);
-        (canExec,) = chainlinkAutomation.resolveDistribution();
-        assertTrue(canExec);
+        isReady = chainlinkAutomation.isDistributionReady();
+        assertTrue(isReady);
     }
 }

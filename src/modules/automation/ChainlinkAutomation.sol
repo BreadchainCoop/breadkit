@@ -19,7 +19,8 @@ contract ChainlinkAutomation is AutomationBase {
         view
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        return resolveDistribution();
+        upkeepNeeded = isDistributionReady();
+        performData = upkeepNeeded ? getAutomationData() : new bytes(0);
     }
 
     /// @notice Chainlink-compatible upkeep execution

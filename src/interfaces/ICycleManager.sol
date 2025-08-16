@@ -5,18 +5,17 @@ pragma solidity ^0.8.20;
 /// @notice Interface for managing distribution cycles and their timing
 /// @dev Manages the timing and state of distribution cycles
 interface ICycleManager {
-    /// @notice Resolves whether distribution should occur
-    /// @dev Contains all logic to determine if conditions are met
-    /// @return canExec Whether execution should proceed
+    /// @notice Gets the automation data for execution
+    /// @dev Returns encoded function call data for automation providers
     /// @return execPayload The encoded function call data
-    function resolveDistribution() external view returns (bool canExec, bytes memory execPayload);
+    function getAutomationData() external view returns (bytes memory execPayload);
 
     /// @notice Executes the distribution
     /// @dev Handles all distribution logic including yield calculation and transfers
     function executeDistribution() external;
 
     /// @notice Checks if the distribution is ready to be executed
-    /// @dev Internally uses resolveDistribution() to avoid logic duplication
+    /// @dev Contains all logic to determine if conditions are met
     /// @return ready Whether the distribution conditions are met
     function isDistributionReady() external view returns (bool ready);
 
@@ -45,12 +44,4 @@ interface ICycleManager {
     /// @notice Gets the last distribution block
     /// @return The block number of the last distribution
     function getLastDistributionBlock() external view returns (uint256);
-
-    /// @notice Gets the current votes in the cycle
-    /// @return The total number of votes cast
-    function getCurrentVotes() external view returns (uint256);
-
-    /// @notice Gets the available yield for distribution
-    /// @return The amount of yield available
-    function getAvailableYield() external view returns (uint256);
 }

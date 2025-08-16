@@ -18,19 +18,24 @@ abstract contract AutomationBase {
         cycleManager = ICycleManager(_cycleManager);
     }
 
-    /// @notice Resolves whether distribution should occur
-    /// @dev Checks all conditions via CycleManager
-    /// @return canExec Whether execution should proceed
+    /// @notice Checks if distribution is ready
+    /// @dev Delegates to CycleManager for condition checking
+    /// @return ready Whether the distribution conditions are met
+    function isDistributionReady() public view virtual returns (bool ready) {
+        return cycleManager.isDistributionReady();
+    }
+
+    /// @notice Gets the automation data for execution
+    /// @dev Delegates to CycleManager for payload generation
     /// @return execPayload The encoded function call data
-    function resolveDistribution() public view virtual returns (bool canExec, bytes memory execPayload) {
-        return cycleManager.resolveDistribution();
+    function getAutomationData() public view virtual returns (bytes memory execPayload) {
+        return cycleManager.getAutomationData();
     }
 
     /// @notice Executes the distribution
     /// @dev Calls CycleManager to handle all distribution logic
     function executeDistribution() public virtual {
-        (bool resolved,) = resolveDistribution();
-        if (!resolved) revert NotResolved();
+        if (!isDistributionReady()) revert NotResolved();
 
         cycleManager.executeDistribution();
 

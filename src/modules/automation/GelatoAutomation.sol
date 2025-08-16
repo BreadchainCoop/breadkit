@@ -14,7 +14,8 @@ contract GelatoAutomation is AutomationBase {
     /// @return canExec Whether execution can proceed
     /// @return execPayload The calldata to execute
     function checker() external view returns (bool canExec, bytes memory execPayload) {
-        return resolveDistribution();
+        canExec = isDistributionReady();
+        execPayload = canExec ? getAutomationData() : new bytes(0);
     }
 
     /// @notice Gelato-compatible execution function
