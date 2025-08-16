@@ -13,7 +13,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 /// @title VotingModule
 /// @notice Main voting module implementation with signature-based voting and multiple strategies
 /// @dev Implements EIP-712 compliant signature verification for gasless voting
-/// @dev See documentation/VotingModuleSignatures.md for detailed signature generation examples
 contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
 
@@ -89,7 +88,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    /// @dev See documentation/VotingModuleSignatures.md for signature generation examples
     function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
         external
         override
