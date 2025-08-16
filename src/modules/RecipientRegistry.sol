@@ -13,7 +13,6 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
     address[] private _activeRecipientAddresses;
     mapping(uint256 => QueuedChange) private _queuedChanges;
 
-    uint256 private constant MAX_RECIPIENTS = 50;
     uint256 private constant PERCENTAGE_PRECISION = 10000; // 100.00%
 
     /// @notice Initialize the registry with default delay
@@ -33,7 +32,6 @@ contract RecipientRegistry is IRecipientRegistry, QueueManager, OwnableUpgradeab
         if (recipient == address(0)) revert InvalidRecipient();
         if (percentage == 0 || percentage > PERCENTAGE_PRECISION) revert InvalidPercentage();
         if (_recipients[recipient].isActive) revert RecipientAlreadyExists();
-        if (_activeRecipientAddresses.length >= MAX_RECIPIENTS) revert InvalidRecipient();
 
         changeId = _enqueue();
 
