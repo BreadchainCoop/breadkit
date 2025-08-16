@@ -381,7 +381,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         cycleNumber++;
 
         // Reset voting state
-        delete currentVotes;
+        currentVotes = new uint256[](0);
         totalVotes = 0;
 
         // Process any queued changes via hooks
