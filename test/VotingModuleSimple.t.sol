@@ -121,8 +121,9 @@ contract VotingModuleSimpleTest is Test {
         vm.prank(voter1);
         votingModule.vote(points);
         
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 3);
+        // Verify vote was recorded by checking project distributions
+        uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
+        assertEq(projectDist.length, 3);
     }
 
     function testSignatureVoting() public {
@@ -144,9 +145,9 @@ contract VotingModuleSimpleTest is Test {
         
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
         
-        // Verify vote was recorded
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 3);
+        // Verify vote was recorded by checking project distributions
+        uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
+        assertEq(projectDist.length, 3);
         
         // Verify nonce was used
         assertTrue(votingModule.isNonceUsed(voter1, nonce));
@@ -205,9 +206,9 @@ contract VotingModuleSimpleTest is Test {
         vm.prank(voter1);
         votingModule.vote(points);
         
-        // Check vote was recorded
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 3);
+        // Check vote was recorded by checking project distributions
+        uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
+        assertEq(projectDist.length, 3);
         
         // Verify expected points length
         assertEq(votingModule.getExpectedPointsLength(), 3);
@@ -232,9 +233,9 @@ contract VotingModuleSimpleTest is Test {
         vm.prank(voter1);
         votingModule.vote(points);
         
-        // Check vote was recorded with 4 points
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 4);
+        // Check vote was recorded with 4 points in project distributions
+        uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
+        assertEq(projectDist.length, 4);
     }
     
     function testInvalidSignature() public {

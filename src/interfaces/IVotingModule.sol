@@ -115,13 +115,6 @@ interface IVotingModule {
     /// @return The total voting power from all strategies
     function getTotalVotingPower(address voter) external view returns (uint256);
 
-    /// @notice Gets the voter's distribution for a specific cycle
-    /// @dev Returns how a voter allocated their points in a given cycle
-    /// @param account The voter's address
-    /// @param cycle The cycle number to query
-    /// @return Array of point allocations for the cycle
-    function getVoterDistribution(address account, uint256 cycle) external view returns (uint256[] memory);
-
     /// @notice Gets the total voting power for a specific cycle
     /// @dev Returns the total voting power used in a specific cycle
     /// @param cycle The cycle number to query

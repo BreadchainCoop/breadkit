@@ -122,8 +122,8 @@ contract VotingModuleTest is Test {
         vm.prank(voter1);
         votingModule.vote(points);
 
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 3);
+        // Verify vote was recorded by checking that the voter has voted
+        assertTrue(votingModule.accountLastVoted(voter1) > 0);
 
         uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
         assertEq(projectDist.length, 3);
@@ -149,8 +149,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded
-        uint256[] memory distribution = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(distribution.length, 3);
+        assertTrue(votingModule.accountLastVoted(voter1) > 0);
 
         // Verify nonce was used
         assertTrue(votingModule.isNonceUsed(voter1, nonce));
@@ -194,14 +193,11 @@ contract VotingModuleTest is Test {
         votingModule.castBatchVotesWithSignature(voters, pointsArray, nonces, signatures);
 
         // Verify both votes were recorded
-        uint256[] memory dist1 = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(dist1.length, 3);
-
-        uint256[] memory dist2 = votingModule.getVoterDistribution(voter2, 1);
-        assertEq(dist2.length, 3);
+        assertTrue(votingModule.accountLastVoted(voter1) > 0);
+        assertTrue(votingModule.accountLastVoted(voter2) > 0);
     }
 
-    function testVoteRecasting() public {
+    function testNoVoteRecasting() public {
         uint256[] memory points1 = new uint256[](3);
         points1[0] = 50;
         points1[1] = 30;
@@ -211,21 +207,18 @@ contract VotingModuleTest is Test {
         vm.prank(voter1);
         votingModule.vote(points1);
 
-        uint256[] memory dist1 = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(dist1.length, 3);
+        // Verify vote was recorded
+        assertTrue(votingModule.accountLastVoted(voter1) > 0);
 
-        // Recast vote with different distribution
+        // Try to recast vote with different distribution - should fail
         uint256[] memory points2 = new uint256[](3);
         points2[0] = 60;
         points2[1] = 25;
         points2[2] = 15;
 
         vm.prank(voter1);
+        vm.expectRevert(VotingModule.AlreadyVotedInCycle.selector);
         votingModule.vote(points2);
-
-        // Verify new distribution replaced old one
-        uint256[] memory dist2 = votingModule.getVoterDistribution(voter1, 1);
-        assertEq(dist2.length, 3);
     }
 
     function testNonceReplayProtection() public {
@@ -350,12 +343,10 @@ contract VotingModuleTest is Test {
         vm.prank(voter2);
         votingModule.vote(points);
 
-        // Check distributions are separate
-        uint256[] memory dist1 = votingModule.getVoterDistribution(voter1, 1);
-        uint256[] memory dist2 = votingModule.getVoterDistribution(voter2, 2);
-
-        assertEq(dist1.length, 3);
-        assertEq(dist2.length, 3);
+        // Check that votes are recorded in different cycles
+        assertTrue(votingModule.accountLastVoted(voter1) > 0);
+        assertTrue(votingModule.accountLastVoted(voter2) > 0);
+        assertEq(votingModule.currentCycle(), 2);
     }
 
     function testNonceSkipping() public {

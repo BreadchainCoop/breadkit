@@ -36,7 +36,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     // Vote tracking
     mapping(address => mapping(uint256 => bool)) public usedNonces;
     mapping(address => uint256) public accountLastVoted;
-    mapping(address => mapping(uint256 => uint256[])) public voterDistributions;
     mapping(uint256 => uint256[]) public projectDistributions;
     mapping(uint256 => uint256) public cycleVotingPower;
     mapping(uint256 => uint256) public currentVotes;
@@ -71,6 +70,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     error EndAfterCurrentBlock();
     error IncorrectNumberOfRecipients();
     error RecipientRegistryNotSet();
+    error AlreadyVotedInCycle();
 
     /// @notice Initializes the voting module with strategies
     /// @param _maxPoints Maximum points that can be allocated per recipient
@@ -232,11 +232,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    function getVoterDistribution(address account, uint256 cycle) external view override returns (uint256[] memory) {
-        return voterDistributions[account][cycle];
-    }
-
-    /// @inheritdoc IVotingModule
     function getTotalVotingPowerForCycle(uint256 cycle) external view override returns (uint256) {
         return cycleVotingPower[cycle];
     }
@@ -338,27 +333,18 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     function _processVote(address voter, uint256[] calldata points, uint256 votingPower, bool hasVotedInCycle)
         internal
     {
-        // Store voter distributions for this cycle
-        uint256[] storage distributions = voterDistributions[voter][currentCycle];
-
-        if (!hasVotedInCycle) {
-            // First vote in cycle - clear old distributions
-            delete voterDistributions[voter][currentCycle];
-            currentVotes[currentCycle] += votingPower;
-            cycleVotingPower[currentCycle] += votingPower;
-        } else {
-            // Recasting vote - subtract old distributions
-            uint256[] memory oldDistributions = distributions;
-            for (uint256 i = 0; i < oldDistributions.length && i < projectDistributions[currentCycle].length; i++) {
-                projectDistributions[currentCycle][i] -= oldDistributions[i];
-            }
-            delete voterDistributions[voter][currentCycle];
+        // Check if voter has already voted in this cycle
+        if (hasVotedInCycle) {
+            revert AlreadyVotedInCycle();
         }
 
-        // Calculate and store new distributions
+        // Update cycle voting power
+        currentVotes[currentCycle] += votingPower;
+        cycleVotingPower[currentCycle] += votingPower;
+
+        // Calculate and update project distributions
         for (uint256 i = 0; i < points.length; i++) {
             uint256 allocation = (votingPower * points[i]) / PRECISION;
-            distributions.push(allocation);
 
             // Update project distributions
             if (i >= projectDistributions[currentCycle].length) {
