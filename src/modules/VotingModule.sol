@@ -26,7 +26,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
 
     // Storage
     uint256 public maxPoints;
-    uint256 public minRequiredVotingPower;
     uint256 public currentCycle;
     uint256 public lastCycleStart;
 
@@ -51,13 +50,11 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     event CycleStarted(uint256 indexed cycle, uint256 startBlock);
     event DistributionModuleSet(address distributionModule);
     event RecipientRegistrySet(address recipientRegistry);
-    event MinRequiredVotingPowerSet(uint256 minPower);
     event MaxPointsSet(uint256 maxPoints);
 
     // Errors
     error InvalidSignature();
     error NonceAlreadyUsed();
-    error InsufficientVotingPower();
     error InvalidPointsDistribution();
     error ExceedsMaxPoints();
     error ZeroVotePoints();
@@ -65,9 +62,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     error BatchTooLarge();
     error NoStrategiesProvided();
     error InvalidStrategy();
-    error NotInVotingPeriod();
-    error StartMustBeBeforeEnd();
-    error EndAfterCurrentBlock();
     error IncorrectNumberOfRecipients();
     error RecipientRegistryNotSet();
     error AlreadyVotedInCycle();
@@ -126,8 +120,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     /// @inheritdoc IVotingModule
     function vote(uint256[] calldata points) public override {
         uint256 votingPower = getTotalVotingPower(msg.sender);
-        if (votingPower < minRequiredVotingPower) revert InsufficientVotingPower();
-
+        
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
         bool hasVotedInCycle = accountLastVoted[msg.sender] > lastCycleStart;
@@ -257,12 +250,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    function setMinRequiredVotingPower(uint256 _minRequiredVotingPower) external override onlyOwner {
-        minRequiredVotingPower = _minRequiredVotingPower;
-        emit MinRequiredVotingPowerSet(_minRequiredVotingPower);
-    }
-
-    /// @inheritdoc IVotingModule
     function setMaxPoints(uint256 _maxPoints) external override onlyOwner {
         maxPoints = _maxPoints;
         emit MaxPointsSet(_maxPoints);
@@ -316,10 +303,9 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
             revert InvalidSignature();
         }
 
-        // Get total voting power and validate
+        // Get total voting power
         uint256 votingPower = getTotalVotingPower(voter);
-        if (votingPower < minRequiredVotingPower) revert InsufficientVotingPower();
-
+        
         // Validate points
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 

@@ -43,7 +43,6 @@ contract MockToken is IBreadKitToken, ERC20VotesUpgradeable {
 contract VotingModuleSimpleTest is Test {
     // Constants
     uint256 constant MAX_POINTS = 100;
-    uint256 constant MIN_VOTING_POWER = 1e18;
     
     // Contracts
     VotingModule public votingModule;
@@ -98,13 +97,11 @@ contract VotingModuleSimpleTest is Test {
         strategies[0] = IVotingPowerStrategy(address(tokenStrategy));
         
         votingModule.initialize(MAX_POINTS, strategies);
-        votingModule.setMinRequiredVotingPower(MIN_VOTING_POWER);
         votingModule.setRecipientRegistry(address(recipientRegistry));
     }
 
     function testInitialization() public view {
         assertEq(votingModule.maxPoints(), MAX_POINTS);
-        assertEq(votingModule.minRequiredVotingPower(), MIN_VOTING_POWER);
         assertEq(votingModule.currentCycle(), 1);
         
         IVotingPowerStrategy[] memory strategies = votingModule.getVotingPowerStrategies();

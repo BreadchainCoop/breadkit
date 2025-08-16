@@ -59,11 +59,6 @@ interface IVotingModule {
     /// @return An array representing the current distribution of votes
     function getCurrentVotingDistribution() external view returns (uint256[] memory);
 
-    /// @notice Sets the minimum required voting power to participate
-    /// @dev This determines the minimum voting power needed to submit a vote
-    /// @param minRequiredVotingPower The minimum voting power required
-    function setMinRequiredVotingPower(uint256 minRequiredVotingPower) external;
-
     /// @notice Sets the maximum number of points that can be allocated
     /// @dev This determines the maximum number of points a user can allocate in a vote
     /// @param maxPoints The maximum number of points allowed

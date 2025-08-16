@@ -17,7 +17,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract VotingModuleTest is Test {
     // Constants
     uint256 constant MAX_POINTS = 100;
-    uint256 constant MIN_VOTING_POWER = 1e18;
 
     // Test addresses
     address constant wxDAI = 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d;
@@ -99,12 +98,10 @@ contract VotingModuleTest is Test {
         strategies[1] = IVotingPowerStrategy(address(timeWeightedStrategy));
 
         votingModule.initialize(MAX_POINTS, strategies);
-        votingModule.setMinRequiredVotingPower(MIN_VOTING_POWER);
     }
 
     function testInitialization() public view {
         assertEq(votingModule.maxPoints(), MAX_POINTS);
-        assertEq(votingModule.minRequiredVotingPower(), MIN_VOTING_POWER);
         assertEq(votingModule.currentCycle(), 1);
 
         IVotingPowerStrategy[] memory strategies = votingModule.getVotingPowerStrategies();
@@ -260,7 +257,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
-    function testInsufficientVotingPower() public {
+    function testZeroVotingPower() public {
         // Create account with no tokens
         address noTokensVoter = address(0x999);
 
@@ -269,10 +266,12 @@ contract VotingModuleTest is Test {
         points[1] = 30;
         points[2] = 20;
 
-        // Direct vote should fail
+        // Vote with zero voting power should succeed but have no effect
         vm.prank(noTokensVoter);
-        vm.expectRevert(VotingModule.InsufficientVotingPower.selector);
         votingModule.vote(points);
+        
+        // Verify vote was recorded but with zero power
+        assertTrue(votingModule.accountLastVoted(noTokensVoter) > 0);
     }
 
     function testExceedsMaxPoints() public {

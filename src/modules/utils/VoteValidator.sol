@@ -9,8 +9,6 @@ contract VoteValidator {
     error InvalidPointsDistribution();
     error ExceedsMaxPoints();
     error ZeroVotePoints();
-    error InvalidCycleState();
-    error VotingNotActive();
     error InvalidNonce();
     error NonceAlreadyUsed();
 
@@ -30,26 +28,6 @@ contract VoteValidator {
 
         // At least some points must be allocated
         return totalPoints > 0;
-    }
-
-    /// @notice Validates the current cycle state
-    /// @param currentCycle The current cycle number
-    /// @param cycleStart The start block of the current cycle
-    /// @param cycleLength The length of a cycle in blocks
-    /// @return True if the cycle state is valid for voting
-    function validateCycleState(uint256 currentCycle, uint256 cycleStart, uint256 cycleLength)
-        external
-        view
-        returns (bool)
-    {
-        if (currentCycle == 0) return false;
-        if (cycleStart == 0) return false;
-
-        // Check if we're within the voting period of the cycle
-        uint256 blocksElapsed = block.number - cycleStart;
-
-        // Voting should be active if we're within the cycle length
-        return blocksElapsed < cycleLength;
     }
 
     /// @notice Validates a signature for vote integrity
@@ -114,14 +92,6 @@ contract VoteValidator {
         }
 
         return true;
-    }
-
-    /// @notice Validates voting power requirements
-    /// @param votingPower The voter's voting power
-    /// @param minRequiredPower The minimum required voting power
-    /// @return True if voting power meets requirements
-    function validateVotingPower(uint256 votingPower, uint256 minRequiredPower) external pure returns (bool) {
-        return votingPower >= minRequiredPower;
     }
 
     // Internal helper functions
