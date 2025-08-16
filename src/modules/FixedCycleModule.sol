@@ -43,17 +43,6 @@ contract FixedCycleModule is ICycleModule {
 
     /// @inheritdoc ICycleModule
     function startNewCycle() external {
-    function isDistributionReady() internal view returns (bool) {
-        return block.number >= lastCycleStartBlock + cycleLength;
-    }
-
-    /// @inheritdoc ICycleModule
-    function externalIsDistributionReady() external view returns (bool) {
-        return isDistributionReady();
-    }
-
-    /// @inheritdoc ICycleModule
-    function startNewCycle() external {
         require(isDistributionReady(), "Cycle not complete");
 
         currentCycle++;
