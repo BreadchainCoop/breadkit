@@ -43,7 +43,7 @@ contract FixedCycleModule is ICycleModule {
 
     /// @inheritdoc ICycleModule
     function startNewCycle() external {
-        require(isDistributionReady(), "Cycle not complete");
+        require(this.isDistributionReady(), "Cycle not complete");
 
         currentCycle++;
         lastCycleStartBlock = block.number;

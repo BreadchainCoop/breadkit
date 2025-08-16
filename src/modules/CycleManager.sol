@@ -28,6 +28,9 @@ contract CycleManager is ICycleManager {
 
     /// @notice Error thrown when attempting to start a new cycle before distribution is completed
     error DistributionNotCompleted();
+
+    /// @notice Error thrown when cycle module address is invalid
+    error InvalidCycleModuleAddress();
     /// @notice Emitted when an address authorization status changes
     /// @param account The address whose authorization was updated
     /// @param isAuthorized The new authorization status
