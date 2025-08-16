@@ -124,7 +124,9 @@ contract CycleManager is ICycleManager {
 
     /// @inheritdoc ICycleManager
     function setCycleModule(address _cycleModule) external onlyAuthorized {
-        require(_cycleModule != address(0), "Invalid cycle module address");
+        if (_cycleModule == address(0)) {
+            revert InvalidCycleModuleAddress();
+        }
 
         address oldModule = address(cycleModule);
         cycleModule = ICycleModule(_cycleModule);
