@@ -1,123 +1,143 @@
 # Automation Module
 
 ## Overview
-The Automation Module provides a simple, unified interface for automation providers (Chainlink, Gelato, etc.) to trigger protocol operations. It eliminates the need for on-chain provider management while ensuring secure and controlled execution.
+The Automation Module provides an abstract base contract for creating provider-specific automation implementations. Following the Breadchain pattern, all distribution logic resides in the CycleManager, while automation contracts simply provide compatible interfaces for different automation providers.
 
 ## Architecture
 
-### Single Contract Design
-The `AutomationModule.sol` contract provides:
-- Compatible endpoints for multiple automation providers
-- Authorization control for callers
-- Timing controls to prevent excessive executions
-- Emergency manual execution capability
+### Abstract Base Design
+- **AutomationBase.sol**: Abstract contract that provider implementations inherit from
+- **ChainlinkAutomation.sol**: Chainlink Keeper compatible implementation
+- **GelatoAutomation.sol**: Gelato Network compatible implementation
+- **ICycleManager**: Contains all distribution logic and conditions
 
-### Key Features
+### Key Components
 
-1. **Provider Compatibility**
-   - Chainlink: `checkUpkeep()` and `performUpkeep()`
-   - Gelato: `checker()` and `execute()`
-   - Generic: `executeAutomation()`
+1. **AutomationBase**
+   - Abstract contract defining core automation functionality
+   - Delegates all logic to CycleManager
+   - Provider implementations inherit and add their specific interfaces
 
-2. **Security Controls**
-   - Authorized caller whitelist
-   - Minimum blocks between executions
-   - Owner-only emergency execution
-   - Enable/disable automation
+2. **CycleManager Integration**
+   - `resolveDistribution()`: Determines if distribution should occur
+   - `executeDistribution()`: Handles all distribution logic
+   - Contains yield calculations, voting checks, and timing logic
 
-3. **Integration**
-   - Works with `ICycleManager` for timing
-   - Triggers `IDistributionModule` for yield distribution
-   - No on-chain provider coordination needed
+3. **Provider Implementations**
+   - Minimal contracts that inherit from AutomationBase
+   - Add provider-specific method signatures
+   - No duplicate logic between providers
 
 ## Usage
 
 ### Deployment
 ```solidity
-// Deploy AutomationModule
-AutomationModule automation = new AutomationModule();
-automation.initialize(owner);
+// Deploy CycleManager with distribution logic
+ICycleManager cycleManager = new CycleManager(distributionModule);
 
-// Configure modules
-automation.setCycleManager(cycleManager);
-automation.setDistributionModule(distributionModule);
+// Deploy Chainlink automation
+ChainlinkAutomation chainlink = new ChainlinkAutomation(address(cycleManager));
 
-// Authorize automation providers
-automation.setCallerAuthorization(chainlinkKeeper, true);
-automation.setCallerAuthorization(gelatoExecutor, true);
+// Deploy Gelato automation
+GelatoAutomation gelato = new GelatoAutomation(address(cycleManager));
 ```
 
 ### Chainlink Integration
 ```solidity
 // Chainlink Keeper checks if execution is needed
-(bool upkeepNeeded, bytes memory performData) = automation.checkUpkeep("");
+(bool upkeepNeeded, bytes memory performData) = chainlink.checkUpkeep("");
 
 // If needed, Chainlink calls performUpkeep
 if (upkeepNeeded) {
-    automation.performUpkeep(performData);
+    chainlink.performUpkeep(performData);
 }
 ```
 
 ### Gelato Integration
 ```solidity
 // Gelato checks if execution is needed
-(bool canExec, bytes memory execPayload) = automation.checker();
+(bool canExec, bytes memory execPayload) = gelato.checker();
 
 // If needed, Gelato calls execute
 if (canExec) {
-    automation.execute(execPayload);
+    gelato.execute(execPayload);
 }
 ```
 
-### Configuration
+### Creating New Provider Implementations
 ```solidity
-// Set minimum blocks between executions
-automation.setMinBlocksBetweenExecutions(100);
-
-// Enable/disable automation
-automation.setAutomationEnabled(false);
-
-// Manage authorized callers
-automation.setCallerAuthorization(address, true);
+contract NewProviderAutomation is AutomationBase {
+    constructor(address _cycleManager) AutomationBase(_cycleManager) {}
+    
+    // Add provider-specific methods
+    function providerSpecificCheck() external view returns (bool, bytes memory) {
+        return resolveDistribution();
+    }
+    
+    function providerSpecificExecute() external {
+        executeDistribution();
+    }
+}
 ```
 
-### Emergency Controls
-```solidity
-// Owner can always execute manually
-automation.emergencyExecute();
-```
+## CycleManager Responsibilities
 
-## Benefits of Simplified Design
+The CycleManager contains all distribution logic:
+- Cycle timing and block counting
+- Voting tallies and thresholds
+- Yield availability checks
+- Distribution execution
+- State management and resets
 
-1. **No On-chain Coordination**: Providers operate independently without needing to coordinate
-2. **Lower Gas Costs**: No provider registration or management overhead
-3. **Simpler Code**: Easier to audit and maintain
-4. **Flexible**: Any automation provider can integrate by calling the appropriate endpoint
-5. **Secure**: Authorization controls prevent unauthorized execution
+## Benefits of This Design
+
+1. **Single Source of Truth**: All logic in CycleManager, no duplication
+2. **Easy to Add Providers**: Just inherit AutomationBase and add interface methods
+3. **Following Breadchain Pattern**: Mirrors the proven architecture
+4. **Minimal Gas Overhead**: Thin automation contracts reduce costs
+5. **Clean Separation**: Automation interface separate from business logic
 
 ## Testing
 
 Run the test suite:
 ```bash
-forge test --match-path test/automation/AutomationModule.t.sol
+forge test --match-path test/automation/AutomationBase.t.sol
 ```
 
-## Security Considerations
+All tests passing (11/11):
+- Chainlink automation flow
+- Gelato automation flow
+- Distribution conditions
+- Cycle management
+- State transitions
 
-- Only authorized addresses can trigger automation
-- Minimum block intervals prevent excessive executions
-- Owner retains emergency control
-- Automation can be disabled if needed
+## File Structure
+
+```
+src/
+├── interfaces/
+│   └── ICycleManager.sol       # Enhanced with distribution logic
+├── modules/
+│   └── automation/
+│       ├── AutomationBase.sol      # Abstract base contract
+│       ├── ChainlinkAutomation.sol # Chainlink implementation
+│       └── GelatoAutomation.sol    # Gelato implementation
+└── mocks/
+    └── MockCycleManager.sol    # Example CycleManager with all logic
+
+test/
+└── automation/
+    └── AutomationBase.t.sol    # Comprehensive test suite
+```
 
 ## Integration Requirements
 
-The module requires:
-- `ICycleManager`: To determine when distributions are ready
-- `IDistributionModule`: To execute the actual distribution
+- **ICycleManager**: Must implement `resolveDistribution()` and `executeDistribution()`
+- **IDistributionModule**: Called by CycleManager to handle transfers
 
-## Gas Optimization
+## Security Considerations
 
-- Simple authorization check (mapping lookup)
-- Minimal state updates per execution
-- No complex provider management logic
-- Early revert conditions to save gas
+- All authorization logic should be in CycleManager
+- Automation contracts are permissionless (anyone can call)
+- CycleManager validates all conditions before execution
+- No state in automation contracts, only in CycleManager
