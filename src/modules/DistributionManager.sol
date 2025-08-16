@@ -301,7 +301,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
         for (uint256 i = 0; i < votes.length; i++) {
             if (votes[i] > 0) {
-                distributions[i] = (votes[i] * totalAmount * PRECISION) / (_totalVotes * PRECISION);
+                distributions[i] = (votes[i] * totalAmount) / _totalVotes;
                 distributed += distributions[i];
             }
         }
