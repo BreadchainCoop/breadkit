@@ -20,7 +20,7 @@ The Distribution Module is the central orchestrating component that handles yiel
    - Emergency mechanisms
 
 3. **YieldCollector** (`src/modules/YieldCollector.sol`)
-   - Multi-source yield collection utility
+   - Single-source yield collection utility
    - Token minting coordination
    - Source validation and monitoring
 
@@ -99,12 +99,11 @@ contract MyDistribution is DistributionManager {
 ### Using YieldCollector
 
 ```solidity
-YieldCollector collector = new YieldCollector(yieldTokenAddress);
+YieldCollector collector = new YieldCollector(yieldTokenAddress, yieldSourceAddress);
 collector.setDistributionManager(distributionAddress);
 
-// Add yield sources
-collector.addYieldSource(source1, "Source 1");
-collector.addYieldSource(source2, "Source 2");
+// Optionally change yield source
+collector.setYieldSource(newYieldSource);
 
 // Collect yield (called by distribution manager)
 uint256 collected = collector.collectYield();

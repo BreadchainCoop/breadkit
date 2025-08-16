@@ -92,7 +92,7 @@ contract DistributionModuleTest is Test {
         votes[2] = 200;
         distribution.setVotes(votes);
 
-        yieldCollector = new YieldCollector(address(yieldToken));
+        yieldCollector = new YieldCollector(address(yieldToken), address(yieldToken));
         yieldCollector.setDistributionManager(address(distribution));
     }
 
