@@ -7,23 +7,22 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 /// @notice Simple registry for managing yield recipients with queued changes
 /// @dev Based on the Breadchain YieldDistributor queueing model
 contract RecipientRegistry is OwnableUpgradeable {
-    
     // Active recipients
     address[] public recipients;
-    
+
     // Queued additions and removals
     address[] public queuedRecipientsForAddition;
     address[] public queuedRecipientsForRemoval;
-    
+
     // Mapping to check if address is an active recipient
     mapping(address => bool) public isRecipient;
-    
+
     // Events
     event RecipientQueued(address indexed recipient, bool isAddition);
     event RecipientAdded(address indexed recipient);
     event RecipientRemoved(address indexed recipient);
     event QueueProcessed(uint256 added, uint256 removed);
-    
+
     // Errors
     error InvalidRecipient();
     error RecipientAlreadyExists();
@@ -41,14 +40,14 @@ contract RecipientRegistry is OwnableUpgradeable {
     function queueRecipientAddition(address recipient) external onlyOwner {
         if (recipient == address(0)) revert InvalidRecipient();
         if (isRecipient[recipient]) revert RecipientAlreadyExists();
-        
+
         // Check if already queued
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
             if (queuedRecipientsForAddition[i] == recipient) {
                 revert RecipientAlreadyQueued();
             }
         }
-        
+
         queuedRecipientsForAddition.push(recipient);
         emit RecipientQueued(recipient, true);
     }
@@ -57,14 +56,14 @@ contract RecipientRegistry is OwnableUpgradeable {
     /// @param recipient Address to remove
     function queueRecipientRemoval(address recipient) external onlyOwner {
         if (!isRecipient[recipient]) revert RecipientNotFound();
-        
+
         // Check if already queued for removal
         for (uint256 i = 0; i < queuedRecipientsForRemoval.length; i++) {
             if (queuedRecipientsForRemoval[i] == recipient) {
                 revert RecipientAlreadyQueued();
             }
         }
-        
+
         queuedRecipientsForRemoval.push(recipient);
         emit RecipientQueued(recipient, false);
     }
@@ -79,7 +78,7 @@ contract RecipientRegistry is OwnableUpgradeable {
     function _updateRecipients() internal {
         uint256 addedCount = queuedRecipientsForAddition.length;
         uint256 removedCount = 0;
-        
+
         // Add all queued recipients
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
             address recipient = queuedRecipientsForAddition[i];
@@ -92,11 +91,11 @@ contract RecipientRegistry is OwnableUpgradeable {
         if (queuedRecipientsForRemoval.length > 0) {
             address[] memory oldRecipients = recipients;
             delete recipients;
-            
+
             for (uint256 i = 0; i < oldRecipients.length; i++) {
                 address recipient = oldRecipients[i];
                 bool shouldRemove = false;
-                
+
                 for (uint256 j = 0; j < queuedRecipientsForRemoval.length; j++) {
                     if (recipient == queuedRecipientsForRemoval[j]) {
                         shouldRemove = true;
@@ -106,17 +105,17 @@ contract RecipientRegistry is OwnableUpgradeable {
                         break;
                     }
                 }
-                
+
                 if (!shouldRemove) {
                     recipients.push(recipient);
                 }
             }
         }
-        
+
         // Clear queues
         delete queuedRecipientsForAddition;
         delete queuedRecipientsForRemoval;
-        
+
         emit QueueProcessed(addedCount, removedCount);
     }
 
