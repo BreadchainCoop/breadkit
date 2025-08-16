@@ -13,11 +13,6 @@ interface IRecipientRegistry {
     /// @return The count of active recipients
     function getActiveRecipientsCount() external view returns (uint256);
 
-    /// @notice Checks if an address is an active recipient
-    /// @param recipient The address to check
-    /// @return True if the address is an active recipient
-    function isActiveRecipient(address recipient) external view returns (bool);
-
     /// @notice Gets recipients queued for addition
     /// @return Array of addresses queued for addition
     function getQueuedAdditions() external view returns (address[] memory);

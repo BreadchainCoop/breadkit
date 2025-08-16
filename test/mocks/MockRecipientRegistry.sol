@@ -36,10 +36,6 @@ contract MockRecipientRegistry is IRecipientRegistry {
         return activeRecipients.length;
     }
 
-    function isActiveRecipient(address recipient) external view override returns (bool) {
-        return isRecipient[recipient];
-    }
-
     function getQueuedAdditions() external view override returns (address[] memory) {
         return queuedAdditions;
     }
