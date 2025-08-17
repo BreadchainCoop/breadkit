@@ -20,6 +20,8 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     error DistributionNotReady();
     error NoYieldAvailable();
     error InvalidAmount();
+    error StrategyAlreadyExists();
+    error StrategyNotFound();
 
     IYieldModule public yieldModule;
     IVotingModule public votingModule;
@@ -27,10 +29,15 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     IDistributionStrategy public baseStrategy;
     address public cycleManager;
     IERC20 public baseToken;
+    
+    // Storage for managing multiple strategies
+    mapping(address => bool) public strategies;
+    address[] public strategyList;
 
     event YieldClaimed(uint256 amount);
     event YieldDistributed(address indexed strategy, uint256 amount);
-    event CycleManagerUpdated(address indexed newCycleManager);
+    event StrategyAdded(address indexed strategy);
+    event StrategyRemoved(address indexed strategy);
 
     /// @dev Initializes the distribution manager
     /// @param _cycleManager Address of the cycle manager
@@ -107,36 +114,11 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
         _distributeToStrategy(yieldAmount);
     }
 
-    /// @notice Claims a specific amount of yield and distributes it
-    /// @param amount The amount of yield to claim and distribute
-    function claimAndDistributeAmount(uint256 amount) external virtual {
-        if (!isDistributionReady()) revert DistributionNotReady();
-        if (amount == 0) revert InvalidAmount();
-
-        uint256 yieldAvailable = yieldModule.yieldAccrued();
-        if (amount > yieldAvailable) revert InvalidAmount();
-
-        // Claim yield to this contract
-        yieldModule.claimYield(amount, address(this));
-        emit YieldClaimed(amount);
-
-        // Distribute to base strategy
-        _distributeToStrategy(amount);
-    }
-
     /// @notice Sets the base distribution strategy
     /// @param _baseStrategy Address of the base distribution strategy
     function setBaseStrategy(address _baseStrategy) external onlyOwner {
         if (_baseStrategy == address(0)) revert ZeroAddress();
         baseStrategy = IDistributionStrategy(_baseStrategy);
-    }
-
-    /// @notice Updates the cycle manager
-    /// @param _cycleManager New cycle manager address
-    function setCycleManager(address _cycleManager) external onlyOwner {
-        if (_cycleManager == address(0)) revert ZeroAddress();
-        cycleManager = _cycleManager;
-        emit CycleManagerUpdated(_cycleManager);
     }
 
     /// @notice Gets the total current voting power from voting module
@@ -154,6 +136,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     /// @param amount Amount to distribute
     function _distributeToStrategy(uint256 amount) internal virtual {
         if (address(baseStrategy) == address(0)) revert ZeroAddress();
+        if (!strategies[address(baseStrategy)]) revert StrategyNotFound();
 
         // Transfer tokens to strategy
         baseToken.safeTransfer(address(baseStrategy), amount);
@@ -162,6 +145,88 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
         baseStrategy.distribute(amount);
 
         emit YieldDistributed(address(baseStrategy), amount);
+    }
+
+    /// @notice Adds a new distribution strategy
+    /// @param strategy Address of the strategy to add
+    function addStrategy(address strategy) external onlyOwner {
+        _addStrategy(strategy);
+    }
+    
+    /// @notice Removes a distribution strategy
+    /// @param strategy Address of the strategy to remove
+    function removeStrategy(address strategy) external onlyOwner {
+        _removeStrategy(strategy);
+    }
+    
+    /// @notice Checks if an address is a registered strategy
+    /// @param strategy Address to check
+    /// @return True if the address is a registered strategy
+    function isStrategy(address strategy) external view returns (bool) {
+        return strategies[strategy];
+    }
+    
+    /// @notice Gets all registered strategies
+    /// @return Array of strategy addresses
+    function getStrategies() external view returns (address[] memory) {
+        return strategyList;
+    }
+    
+    /// @dev Internal function to add a strategy
+    /// @param strategy Address of the strategy to add
+    function _addStrategy(address strategy) internal virtual {
+        if (strategy == address(0)) revert ZeroAddress();
+        if (strategies[strategy]) revert StrategyAlreadyExists();
+        
+        strategies[strategy] = true;
+        strategyList.push(strategy);
+        
+        // If no base strategy set, make this the base strategy
+        if (address(baseStrategy) == address(0)) {
+            baseStrategy = IDistributionStrategy(strategy);
+        }
+        
+        emit StrategyAdded(strategy);
+    }
+    
+    /// @dev Internal function to remove a strategy
+    /// @param strategy Address of the strategy to remove
+    function _removeStrategy(address strategy) internal virtual {
+        if (!strategies[strategy]) revert StrategyNotFound();
+        
+        strategies[strategy] = false;
+        
+        // Remove from array
+        for (uint256 i = 0; i < strategyList.length; i++) {
+            if (strategyList[i] == strategy) {
+                strategyList[i] = strategyList[strategyList.length - 1];
+                strategyList.pop();
+                break;
+            }
+        }
+        
+        // If this was the base strategy, clear it
+        if (address(baseStrategy) == strategy) {
+            baseStrategy = IDistributionStrategy(address(0));
+        }
+        
+        emit StrategyRemoved(strategy);
+    }
+    
+    /// @dev Internal function to distribute to a specific strategy
+    /// @param strategy Address of the strategy to distribute to
+    /// @param amount Amount to distribute
+    function _distributeToSpecificStrategy(address strategy, uint256 amount) internal virtual {
+        if (!strategies[strategy]) revert StrategyNotFound();
+        if (amount == 0) revert InvalidAmount();
+        
+        // Transfer tokens to strategy
+        baseToken.safeTransfer(strategy, amount);
+        
+        // Trigger distribution in strategy
+        IDistributionStrategy(strategy).distribute(amount);
+        
+        emit YieldDistributed(strategy, amount);
     }
 
     /// @notice Modifier to restrict access to cycle manager

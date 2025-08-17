@@ -27,26 +27,32 @@ abstract contract BaseDistributionStrategy is
 
     IERC20 public yieldToken;
     IRecipientRegistry public recipientRegistry;
+    address public distributionManager;
 
     /// @dev Initializes the base distribution strategy
     /// @param _yieldToken Address of the yield token to distribute
     /// @param _recipientRegistry Address of the recipient registry
-    function __BaseDistributionStrategy_init(address _yieldToken, address _recipientRegistry)
-        internal
-        onlyInitializing
-    {
+    /// @param _distributionManager Address of the distribution manager
+    function __BaseDistributionStrategy_init(
+        address _yieldToken,
+        address _recipientRegistry,
+        address _distributionManager
+    ) internal onlyInitializing {
         __Ownable_init(msg.sender);
-        __BaseDistributionStrategy_init_unchained(_yieldToken, _recipientRegistry);
+        __BaseDistributionStrategy_init_unchained(_yieldToken, _recipientRegistry, _distributionManager);
     }
 
-    function __BaseDistributionStrategy_init_unchained(address _yieldToken, address _recipientRegistry)
-        internal
-        onlyInitializing
-    {
+    function __BaseDistributionStrategy_init_unchained(
+        address _yieldToken,
+        address _recipientRegistry,
+        address _distributionManager
+    ) internal onlyInitializing {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_recipientRegistry == address(0)) revert ZeroAddress();
+        if (_distributionManager == address(0)) revert ZeroAddress();
         yieldToken = IERC20(_yieldToken);
         recipientRegistry = IRecipientRegistry(_recipientRegistry);
+        distributionManager = _distributionManager;
     }
 
     /// @inheritdoc IDistributionStrategy
@@ -61,13 +67,6 @@ abstract contract BaseDistributionStrategy is
         emit Distributed(amount);
     }
 
-    /// @notice Sets the recipient registry
-    /// @param _recipientRegistry Address of the new recipient registry
-    function setRecipientRegistry(address _recipientRegistry) external onlyOwner {
-        if (_recipientRegistry == address(0)) revert ZeroAddress();
-        recipientRegistry = IRecipientRegistry(_recipientRegistry);
-    }
-
     /// @dev Internal distribution logic to be implemented by concrete strategies
     /// @param amount Amount to distribute
     /// @param recipients Array of recipients to distribute to
@@ -79,10 +78,10 @@ abstract contract BaseDistributionStrategy is
         return recipientRegistry.getRecipients();
     }
 
-    // IDistributionStrategyModule implementation for single strategy
+    // IDistributionStrategyModule implementation for single strategy mode
 
     /// @inheritdoc IDistributionStrategyModule
-    function distributeToStrategy(address strategy, uint256 amount) external override onlyOwner {
+    function distributeToStrategy(address strategy, uint256 amount) external override onlyDistributionManager {
         // For single strategy deployment, this contract is the strategy
         require(strategy == address(this), "Invalid strategy");
         if (amount == 0) revert ZeroAmount();
@@ -96,12 +95,12 @@ abstract contract BaseDistributionStrategy is
 
     /// @inheritdoc IDistributionStrategyModule
     function addStrategy(address) external pure override {
-        revert("Single strategy mode");
+        revert("Strategy management in DistributionManager");
     }
 
     /// @inheritdoc IDistributionStrategyModule
     function removeStrategy(address) external pure override {
-        revert("Single strategy mode");
+        revert("Strategy management in DistributionManager");
     }
 
     /// @inheritdoc IDistributionStrategyModule
@@ -114,5 +113,11 @@ abstract contract BaseDistributionStrategy is
         address[] memory strategies = new address[](1);
         strategies[0] = address(this);
         return strategies;
+    }
+
+    /// @notice Modifier to restrict access to distribution manager
+    modifier onlyDistributionManager() {
+        require(msg.sender == distributionManager, "Only distribution manager");
+        _;
     }
 }
