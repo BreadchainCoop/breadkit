@@ -12,7 +12,6 @@ import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 ///      using signature-based voting for gas efficiency and better UX.
 /// @custom:security-contact security@breadchain.xyz
 contract BasisPointsVotingModule is AbstractVotingModule {
-
     // ============ Constructor ============
 
     /// @notice Creates a new BasisPointsVotingModule instance
