@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+// TODO: Implement TimeWeightedVotingPower in a future release
+// Issue: https://github.com/BreadchainCoop/breadkit/issues/[TBD]
+// 
+// The TimeWeightedVotingPower strategy will calculate voting power based on how long
+// tokens were held during a specific period, encouraging long-term holding and participation.
+// This follows the breadchain pattern for fair distribution.
+//
+// Implementation requirements:
+// - Calculate voting power based on token holding duration
+// - Support configurable time periods for weight calculation  
+// - Integrate with cycle management for proper period tracking
+// - Handle edge cases for mid-period token transfers
+//
+// Commented out for initial release - to be implemented in a future version
+
+/*
 import {IVotingPowerStrategy} from "../../interfaces/IVotingPowerStrategy.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
@@ -105,3 +121,4 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
         emit CycleBoundsUpdated(_previousCycleStart, _lastClaimedBlock);
     }
 }
+*/

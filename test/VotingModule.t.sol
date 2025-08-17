@@ -57,7 +57,7 @@ contract VotingModuleTest is Test {
     uint256 public voter3PrivateKey;
 
     // Events
-    event VoteCastWithSignature(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce);
+    event VoteCast(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce, bytes signature);
     event BatchVotesCast(address[] voters, uint256[] nonces);
     event VotingModuleInitialized(IVotingPowerStrategy[] strategies);
 
@@ -112,9 +112,7 @@ contract VotingModuleTest is Test {
         IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](1);
         strategies[0] = IVotingPowerStrategy(address(tokenStrategy));
 
-        votingModule.initialize(MAX_POINTS, strategies);
-        votingModule.setRecipientRegistry(address(recipientRegistry));
-        votingModule.setCycleModule(address(cycleModule));
+        votingModule.initialize(MAX_POINTS, strategies, address(0), address(recipientRegistry), address(cycleModule));
     }
 
     // Helper function to create vote signature
@@ -179,7 +177,7 @@ contract VotingModuleTest is Test {
 
         // Cast vote with signature
         vm.expectEmit(true, false, false, true);
-        emit VoteCastWithSignature(voter1, points, votingModule.getVotingPower(voter1), nonce);
+        emit VoteCast(voter1, points, votingModule.getVotingPower(voter1), nonce, signature);
 
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
@@ -232,7 +230,7 @@ contract VotingModuleTest is Test {
         assertEq(votingModule.accountLastVotedCycle(voter2), cycleModule.getCurrentCycle());
     }
 
-    function testNoVoteRecasting() public {
+    function testVoteRecasting() public {
         uint256[] memory points1 = new uint256[](3);
         points1[0] = 50;
         points1[1] = 30;
@@ -245,21 +243,38 @@ contract VotingModuleTest is Test {
 
         // Verify vote was recorded
         assertEq(votingModule.accountLastVotedCycle(voter1), cycleModule.getCurrentCycle());
+        
+        // Get voting power for calculations
+        uint256 votingPower = votingModule.getVotingPower(voter1);
+
+        // Get initial distribution and verify it matches expected values
+        uint256[] memory dist1 = votingModule.getCurrentVotingDistribution();
+        assertEq(dist1[0], (votingPower * 50) / 1e18, "First project should have correct allocation");
+        assertEq(dist1[1], (votingPower * 30) / 1e18, "Second project should have correct allocation");
+        assertEq(dist1[2], (votingPower * 20) / 1e18, "Third project should have correct allocation");
 
         // Advance block to ensure timestamps differ
         vm.roll(block.number + 1);
 
-        // Try to recast vote with different distribution - should fail
+        // Cast second vote with different distribution - should replace previous vote
         uint256[] memory points2 = new uint256[](3);
         points2[0] = 60;
         points2[1] = 25;
         points2[2] = 15;
 
-        // Second vote should fail in same cycle
+        // Second vote should succeed and replace the first vote
         uint256 nonce2 = 2;
         bytes memory signature2 = createVoteSignature(voter1, voter1PrivateKey, points2, nonce2);
-        vm.expectRevert(BasisPointsVotingModule.AlreadyVotedInCycle.selector);
         votingModule.castVoteWithSignature(voter1, points2, nonce2, signature2);
+
+        // Verify the vote was replaced, not added
+        uint256[] memory dist2 = votingModule.getCurrentVotingDistribution();
+        assertEq(dist2[0], (votingPower * 60) / 1e18, "First project should have new allocation");
+        assertEq(dist2[1], (votingPower * 25) / 1e18, "Second project should have new allocation");
+        assertEq(dist2[2], (votingPower * 15) / 1e18, "Third project should have new allocation");
+        
+        // Verify vote count remains 1 (replaced, not added)
+        assertEq(votingModule.currentVotes(cycleModule.getCurrentCycle()), 1, "Vote count should remain 1 after recasting");
     }
 
     function testNonceReplayProtection() public {

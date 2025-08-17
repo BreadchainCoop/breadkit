@@ -111,7 +111,7 @@ contract VotingModuleSimpleTest is Test {
     uint256 public voter2PrivateKey;
 
     // Events
-    event VoteCastWithSignature(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce);
+    event VoteCast(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce, bytes signature);
 
     function setUp() public {
         // Setup test accounts
@@ -143,13 +143,11 @@ contract VotingModuleSimpleTest is Test {
         IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](1);
         strategies[0] = IVotingPowerStrategy(address(tokenStrategy));
 
-        votingModule.initialize(MAX_POINTS, strategies);
-        votingModule.setRecipientRegistry(address(recipientRegistry));
-        
         // Deploy and initialize cycle module
         cycleModule = new CycleModule();
         cycleModule.initialize(1000); // 1000 blocks per cycle
-        votingModule.setCycleModule(address(cycleModule));
+        
+        votingModule.initialize(MAX_POINTS, strategies, address(0), address(recipientRegistry), address(cycleModule));
     }
 
     function testInitialization() public view {
@@ -195,7 +193,7 @@ contract VotingModuleSimpleTest is Test {
 
         // Cast vote with signature
         vm.expectEmit(true, false, false, true);
-        emit VoteCastWithSignature(voter1, points, votingModule.getVotingPower(voter1), nonce);
+        emit VoteCast(voter1, points, votingModule.getVotingPower(voter1), nonce, signature);
 
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
