@@ -31,8 +31,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
 
     /// @notice EIP-712 typehash for vote signature verification
     /// @dev Keccak256 hash of the Vote type structure for EIP-712 signing
-    bytes32 public constant VOTE_TYPEHASH =
-        keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)");
+    bytes32 public constant VOTE_TYPEHASH = keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)");
 
     // ============ Storage Variables ============
 
@@ -83,7 +82,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @notice Reference to the recipient registry for validation
     /// @dev Maintains the list of valid recipients that can receive votes
     IMockRecipientRegistry public recipientRegistry;
-    
+
     /// @notice Reference to the cycle module for cycle management
     /// @dev Manages voting cycles and transitions between periods
     ICycleModule public cycleModule;
@@ -96,13 +95,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @param votingPower The total voting power used
     /// @param nonce The nonce used for replay protection
     /// @param signature The EIP-712 signature
-    event VoteCast(
-        address indexed voter,
-        uint256[] points,
-        uint256 votingPower,
-        uint256 nonce,
-        bytes signature
-    );
+    event VoteCast(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce, bytes signature);
 
     /// @notice Emitted when multiple votes are cast in a batch
     /// @param voters Array of voter addresses
@@ -267,12 +260,9 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @param points Array of points to allocate to each recipient
     /// @param nonce Unique nonce for replay protection
     /// @param signature EIP-712 signature from the voter
-    function _castSingleVote(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) internal {
+    function _castSingleVote(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        internal
+    {
         // Check nonce hasn't been used
         if (usedNonces[voter][nonce]) revert NonceAlreadyUsed();
 
@@ -316,20 +306,16 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @param voter Address of the voter
     /// @param points Array of points allocated to each recipient
     /// @param votingPower Total voting power of the voter
-    function _processVote(
-        address voter,
-        uint256[] calldata points,
-        uint256 votingPower
-    ) internal virtual {
+    function _processVote(address voter, uint256[] calldata points, uint256 votingPower) internal virtual {
         uint256 currentCycle = cycleModule.getCurrentCycle();
-        
+
         // Check if voter has already voted in this cycle and revert their previous vote
         uint256 previousVotingPower = voterCyclePower[currentCycle][voter];
         if (previousVotingPower > 0) {
             // Revert previous vote's impact on total voting power
             totalCycleVotingPower[currentCycle] -= previousVotingPower;
             currentVotes[currentCycle] -= 1; // Decrement vote count since we're replacing
-            
+
             // Revert previous vote's impact on project distributions
             uint256[] storage previousPoints = voterCyclePoints[currentCycle][voter];
             for (uint256 i = 0; i < previousPoints.length; i++) {
@@ -341,7 +327,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
         // Apply new vote
         currentVotes[currentCycle] += 1;
         totalCycleVotingPower[currentCycle] += votingPower;
-        
+
         // Store voter's current voting power and points for potential future recasting
         voterCyclePower[currentCycle][voter] = votingPower;
         delete voterCyclePoints[currentCycle][voter]; // Clear previous points array
@@ -392,12 +378,12 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @param nonce The nonce for replay protection
     /// @param signature The signature to validate
     /// @return True if signature is valid, false otherwise
-    function validateSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) public view virtual returns (bool) {
+    function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        public
+        view
+        virtual
+        returns (bool)
+    {
         bytes32 structHash = keccak256(abi.encode(VOTE_TYPEHASH, voter, keccak256(abi.encodePacked(points)), nonce));
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = hash.recover(signature);

@@ -55,9 +55,9 @@ contract BasisPointsVotingModule is AbstractVotingModule {
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         return _validateVotePoints(points);
     }
-    
+
     // ============ Constructor ============
-    
+
     /// @notice Creates a new BasisPointsVotingModule instance
     /// @dev Initializes the implementation contract. Must be initialized before use.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -82,13 +82,7 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         address _recipientRegistry,
         address _cycleModule
     ) external initializer {
-        __AbstractVotingModule_init(
-            _maxPoints,
-            _strategies,
-            _distributionModule,
-            _recipientRegistry,
-            _cycleModule
-        );
+        __AbstractVotingModule_init(_maxPoints, _strategies, _distributionModule, _recipientRegistry, _cycleModule);
     }
 
     // ============ External Functions ============
@@ -123,11 +117,7 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         bytes[] calldata signatures
     ) external {
         // Validate array lengths match
-        if (
-            voters.length != points.length ||
-            voters.length != nonces.length ||
-            voters.length != signatures.length
-        ) {
+        if (voters.length != points.length || voters.length != nonces.length || voters.length != signatures.length) {
             revert ArrayLengthMismatch();
         }
 
