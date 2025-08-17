@@ -25,6 +25,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     uint256 public cycleLength;
     uint256 public yieldFixedSplitDivisor;
     uint256 public lastDistributionTime;
+    bool public paused;
 
     IDistributionStrategyModule public strategyModule;
     IVotingModule public votingModule;
@@ -38,7 +39,6 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     uint256[] public currentDistribution;
     uint256 public totalVotes;
 
-    event DistributionExecuted(uint256 totalYield, uint256 fixedAmount, uint256 votedAmount);
     event ProjectAdded(address indexed project);
     event ProjectRemoved(address indexed project);
     event CycleLengthUpdated(uint256 newLength);
@@ -61,7 +61,8 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     }
 
     /// @inheritdoc IDistributionModule
-    function distribute() external override {
+    function distributeYield() external override {
+        require(!paused, "Distribution is paused");
         if (block.timestamp < lastDistributionTime + cycleLength) {
             revert DistributionNotReady();
         }
@@ -82,7 +83,23 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
 
         lastDistributionTime = block.timestamp;
 
-        emit DistributionExecuted(totalYield, fixedAmount, votedAmount);
+        // Prepare arrays for event
+        uint256[] memory votedDistributions = new uint256[](projects.length);
+        uint256[] memory fixedDistributions = new uint256[](projects.length);
+        
+        // Populate distribution arrays
+        for (uint256 i = 0; i < projects.length; i++) {
+            fixedDistributions[i] = fixedAmount / projects.length;
+            if (i == projects.length - 1) {
+                fixedDistributions[i] = fixedAmount - (fixedAmount / projects.length * (projects.length - 1));
+            }
+            if (totalVotes > 0 && currentDistribution[i] > 0) {
+                votedDistributions[i] = (votedAmount * currentDistribution[i]) / totalVotes;
+            }
+        }
+        
+        emit YieldDistributed(totalYield, totalVotes, projects, votedDistributions, fixedDistributions);
+        emit CycleCompleted(block.number / cycleLength, block.number);
     }
 
     /// @dev Distributes the fixed portion equally among all projects
@@ -132,8 +149,63 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     }
 
     /// @inheritdoc IDistributionModule
-    function getCurrentDistribution() external view override returns (uint256[] memory) {
-        return currentDistribution;
+    function getCurrentDistributionState() external view override returns (IDistributionModule.DistributionState memory state) {
+        uint256 totalYield = yieldToken.balanceOf(address(this));
+        (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateSplit(totalYield);
+        
+        uint256[] memory votedDistributions = new uint256[](projects.length);
+        uint256[] memory fixedDistributions = new uint256[](projects.length);
+        
+        for (uint256 i = 0; i < projects.length; i++) {
+            fixedDistributions[i] = fixedAmount / projects.length;
+            if (i == projects.length - 1) {
+                fixedDistributions[i] = fixedAmount - (fixedAmount / projects.length * (projects.length - 1));
+            }
+            if (totalVotes > 0 && currentDistribution[i] > 0) {
+                votedDistributions[i] = (votedAmount * currentDistribution[i]) / totalVotes;
+            }
+        }
+        
+        state = IDistributionModule.DistributionState({
+            totalYield: totalYield,
+            fixedAmount: fixedAmount,
+            votedAmount: votedAmount,
+            totalVotes: totalVotes,
+            lastDistributionBlock: lastDistributionTime,
+            cycleNumber: block.number / cycleLength,
+            recipients: projects,
+            votedDistributions: votedDistributions,
+            fixedDistributions: fixedDistributions
+        });
+    }
+
+    /// @inheritdoc IDistributionModule
+    function validateDistribution() external view override returns (bool canDistribute, string memory reason) {
+        if (paused) {
+            return (false, "Distribution is paused");
+        }
+        if (block.timestamp < lastDistributionTime + cycleLength) {
+            return (false, "Distribution not ready");
+        }
+        if (projects.length == 0) {
+            return (false, "No projects configured");
+        }
+        uint256 totalYield = yieldToken.balanceOf(address(this));
+        if (totalYield == 0) {
+            return (false, "Insufficient yield");
+        }
+        return (true, "");
+    }
+
+    /// @inheritdoc IDistributionModule
+    function emergencyPause() external override onlyOwner {
+        paused = true;
+        emit EmergencyPause(msg.sender, block.timestamp);
+    }
+
+    /// @inheritdoc IDistributionModule
+    function emergencyResume() external override onlyOwner {
+        paused = false;
     }
 
     /// @inheritdoc IDistributionModule
@@ -155,8 +227,9 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         emit YieldFixedSplitDivisorUpdated(_yieldFixedSplitDivisor);
     }
 
-    /// @inheritdoc IDistributionModule
-    function setAMMVotingPower(address _ammVotingPower) external override onlyOwner {
+    /// @notice Sets the AMM voting power module
+    /// @param _ammVotingPower Address of the AMM voting power module
+    function setAMMVotingPower(address _ammVotingPower) external onlyOwner {
         if (_ammVotingPower == address(0)) revert ZeroAddress();
         ammVotingPower = IAMMVotingPowerModule(_ammVotingPower);
         emit AMMVotingPowerUpdated(_ammVotingPower);
