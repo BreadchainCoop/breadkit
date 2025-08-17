@@ -17,7 +17,6 @@ interface AutomationCompatibleInterface {
 /// @notice Chainlink Keeper compatible automation implementation
 /// @dev Implements Chainlink automation interface for yield distribution
 contract ChainlinkAutomation is AutomationBase, AutomationCompatibleInterface {
-    
     // ============ Constructor ============
     constructor(address _owner) AutomationBase(_owner) {}
 
@@ -27,11 +26,11 @@ contract ChainlinkAutomation is AutomationBase, AutomationCompatibleInterface {
     /// @param checkData Data passed by Chainlink Keeper network
     /// @return upkeepNeeded Whether upkeep is needed
     /// @return performData Data to pass to performUpkeep
-    function checkUpkeep(bytes calldata checkData) 
-        external 
-        view 
-        override 
-        returns (bool upkeepNeeded, bytes memory performData) 
+    function checkUpkeep(bytes calldata checkData)
+        external
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory performData)
     {
         upkeepNeeded = isDistributionReady();
         performData = checkData; // Pass through the data
@@ -40,7 +39,7 @@ contract ChainlinkAutomation is AutomationBase, AutomationCompatibleInterface {
 
     /// @notice Performs the upkeep (Chainlink Keeper interface)
     /// @dev performData parameter is unused but required by interface
-    function performUpkeep(bytes calldata /* performData */) external override {
+    function performUpkeep(bytes calldata /* performData */ ) external override {
         executeDistribution();
     }
 }

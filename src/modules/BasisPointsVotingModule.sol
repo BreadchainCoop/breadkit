@@ -14,55 +14,88 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///      using signature-based voting for gas efficiency and better UX.
 /// @custom:security-contact security@breadchain.xyz
 contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModule {
-    
     // ============ Override Resolution ============
     // These functions are defined in both AbstractVotingModule and IBasisPointsVotingModule
     // We explicitly override to resolve the diamond inheritance issue
-    
-    function getVotingPower(address account) external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (uint256) {
+
+    function getVotingPower(address account)
+        external
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (uint256)
+    {
         return _calculateTotalVotingPower(account);
     }
-    
-    function getCurrentVotingDistribution() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (uint256[] memory) {
+
+    function getCurrentVotingDistribution()
+        external
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (uint256[] memory)
+    {
         uint256 currentCycle = cycleModule.getCurrentCycle();
         return projectDistributions[currentCycle];
     }
-    
-    function DOMAIN_SEPARATOR() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bytes32) {
+
+    function DOMAIN_SEPARATOR()
+        external
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (bytes32)
+    {
         return _domainSeparatorV4();
     }
-    
-    function isNonceUsed(address voter, uint256 nonce) external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+
+    function isNonceUsed(address voter, uint256 nonce)
+        external
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (bool)
+    {
         return usedNonces[voter][nonce];
     }
-    
-    function getVotingPowerStrategies() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (IVotingPowerStrategy[] memory) {
+
+    function getVotingPowerStrategies()
+        external
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (IVotingPowerStrategy[] memory)
+    {
         return votingPowerStrategies;
     }
-    
-    function setMaxPoints(uint256 _maxPoints) external override(AbstractVotingModule, IBasisPointsVotingModule) onlyOwner {
+
+    function setMaxPoints(uint256 _maxPoints)
+        external
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        onlyOwner
+    {
         maxPoints = _maxPoints;
         emit MaxPointsSet(_maxPoints);
     }
-    
-    function validateSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) public view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+
+    function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        public
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (bool)
+    {
         bytes32 structHash = keccak256(abi.encode(VOTE_TYPEHASH, voter, keccak256(abi.encodePacked(points)), nonce));
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, signature);
         return signer == voter && !usedNonces[voter][nonce];
     }
-    
-    function validateVotePoints(uint256[] calldata points) public view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+
+    function validateVotePoints(uint256[] calldata points)
+        public
+        view
+        override(AbstractVotingModule, IBasisPointsVotingModule)
+        returns (bool)
+    {
         return _validateVotePoints(points);
     }
-    
+
     // ============ Constructor ============
-    
+
     /// @notice Creates a new BasisPointsVotingModule instance
     /// @dev Initializes the implementation contract. Must be initialized before use.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -87,13 +120,7 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
         address _recipientRegistry,
         address _cycleModule
     ) external initializer {
-        __AbstractVotingModule_init(
-            _maxPoints,
-            _strategies,
-            _distributionModule,
-            _recipientRegistry,
-            _cycleModule
-        );
+        __AbstractVotingModule_init(_maxPoints, _strategies, _distributionModule, _recipientRegistry, _cycleModule);
     }
 
     // ============ External Functions ============
@@ -106,12 +133,10 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
     /// @param points Array of basis points to allocate to each recipient (must sum to <= maxPoints per recipient)
     /// @param nonce Unique nonce for this vote to prevent replay attacks
     /// @param signature EIP-712 signature authorizing this vote
-    function castVoteWithSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) external override {
+    function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        external
+        override
+    {
         _castSingleVote(voter, points, nonce, signature);
     }
 
@@ -130,11 +155,7 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
         bytes[] calldata signatures
     ) external override {
         // Validate array lengths match
-        if (
-            voters.length != points.length ||
-            voters.length != nonces.length ||
-            voters.length != signatures.length
-        ) {
+        if (voters.length != points.length || voters.length != nonces.length || voters.length != signatures.length) {
             revert ArrayLengthMismatch();
         }
 
