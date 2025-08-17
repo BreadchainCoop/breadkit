@@ -12,12 +12,6 @@ interface IVotingModule {
     /// @param points Array of points allocated to each project
     function vote(uint256[] calldata points) external;
 
-    /// @notice Submits a vote with points and applies multipliers
-    /// @dev This function records a user's vote with points and applies specified multipliers
-    /// @param points Array of points allocated to each project
-    /// @param multiplierIndices Array of indices for multipliers to apply
-    function voteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices) external;
-
     /// @notice Delegates voting power to another address
     /// @dev This function allows a user to delegate their voting power to another address
     /// @param delegatee The address to delegate voting power to
@@ -33,12 +27,6 @@ interface IVotingModule {
     /// @dev This function is an alias for vote() and records a user's vote with points
     /// @param points Array of points allocated to each project
     function castVote(uint256[] calldata points) external;
-
-    /// @notice Casts a vote with points and applies multipliers
-    /// @dev This function is an alias for voteWithMultipliers() and records a user's vote with points and multipliers
-    /// @param points Array of points allocated to each project
-    /// @param multiplierIndices Array of indices for multipliers to apply
-    function castVoteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices) external;
 
     /// @notice Gets the current distribution of votes across projects
     /// @dev Returns the current voting distribution showing how votes are allocated

@@ -158,22 +158,8 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    function voteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices) public override {
-        // Implementation for multipliers can be added later
-        vote(points);
-    }
-
-    /// @inheritdoc IVotingModule
     function castVote(uint256[] calldata points) external override {
         vote(points);
-    }
-
-    /// @inheritdoc IVotingModule
-    function castVoteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices)
-        external
-        override
-    {
-        voteWithMultipliers(points, multiplierIndices);
     }
 
     /// @inheritdoc IVotingModule
