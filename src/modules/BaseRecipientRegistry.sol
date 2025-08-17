@@ -196,5 +196,4 @@ abstract contract BaseRecipientRegistry is IRecipientRegistry, OwnableUpgradeabl
     function isRecipient(address recipient) external view returns (bool isActive) {
         return isRecipientMapping[recipient];
     }
-
 }
