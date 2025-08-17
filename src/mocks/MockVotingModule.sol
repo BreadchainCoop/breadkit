@@ -13,7 +13,7 @@ contract MockVotingModule is IVotingModule {
     mapping(address => uint256) public votingPower;
     mapping(address => address) public delegates;
     mapping(address => mapping(uint256 => bool)) public usedNonces;
-    
+
     uint256 public maxPoints = 100;
     bytes32 public constant DOMAIN_SEPARATOR = keccak256("MockVotingModule");
     IVotingPowerStrategy[] public votingStrategies;
@@ -86,12 +86,10 @@ contract MockVotingModule is IVotingModule {
     }
 
     /// @inheritdoc IVotingModule
-    function castVoteWithSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata
-    ) external override {
+    function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata)
+        external
+        override
+    {
         require(!usedNonces[voter][nonce], "Nonce already used");
         usedNonces[voter][nonce] = true;
         votingDistribution = points;
@@ -106,7 +104,7 @@ contract MockVotingModule is IVotingModule {
     ) external override {
         require(voters.length == points.length, "Length mismatch");
         require(voters.length == nonces.length, "Length mismatch");
-        
+
         // Just use the last vote for simplicity
         if (points.length > 0) {
             votingDistribution = points[points.length - 1];
@@ -126,12 +124,12 @@ contract MockVotingModule is IVotingModule {
     }
 
     /// @inheritdoc IVotingModule
-    function validateSignature(
-        address,
-        uint256[] calldata,
-        uint256,
-        bytes calldata
-    ) external pure override returns (bool) {
+    function validateSignature(address, uint256[] calldata, uint256, bytes calldata)
+        external
+        pure
+        override
+        returns (bool)
+    {
         // Always return true for mock
         return true;
     }

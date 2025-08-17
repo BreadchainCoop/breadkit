@@ -44,12 +44,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
         address _votingModule
     ) internal onlyInitializing {
         __Ownable_init(msg.sender);
-        __DistributionManager_init_unchained(
-            _cycleManager,
-            _recipientRegistry,
-            _baseToken,
-            _votingModule
-        );
+        __DistributionManager_init_unchained(_cycleManager, _recipientRegistry, _baseToken, _votingModule);
     }
 
     function __DistributionManager_init_unchained(
@@ -67,7 +62,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
         recipientRegistry = IRecipientRegistry(_recipientRegistry);
         baseToken = IERC20(_baseToken);
         votingModule = IVotingModule(_votingModule);
-        
+
         // Assume base token implements IYieldModule
         yieldModule = IYieldModule(_baseToken);
     }
@@ -90,7 +85,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
 
         // Get accrued yield
         uint256 yieldAccrued = yieldModule.yieldAccrued();
-        
+
         // Distribution is ready if yield > recipient count (ensures each recipient gets at least 1 wei)
         return yieldAccrued > recipientCount;
     }
@@ -117,7 +112,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     function claimAndDistributeAmount(uint256 amount) external virtual {
         if (!isDistributionReady()) revert DistributionNotReady();
         if (amount == 0) revert InvalidAmount();
-        
+
         uint256 yieldAvailable = yieldModule.yieldAccrued();
         if (amount > yieldAvailable) revert InvalidAmount();
 
@@ -159,13 +154,13 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     /// @param amount Amount to distribute
     function _distributeToStrategy(uint256 amount) internal virtual {
         if (address(baseStrategy) == address(0)) revert ZeroAddress();
-        
+
         // Transfer tokens to strategy
         baseToken.safeTransfer(address(baseStrategy), amount);
-        
+
         // Trigger distribution in strategy
         baseStrategy.distribute(amount);
-        
+
         emit YieldDistributed(address(baseStrategy), amount);
     }
 

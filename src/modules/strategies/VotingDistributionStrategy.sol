@@ -20,11 +20,7 @@ contract VotingDistributionStrategy is BaseDistributionStrategy {
     /// @param _yieldToken Address of the yield token to distribute
     /// @param _recipientRegistry Address of the recipient registry
     /// @param _votingModule Address of the voting module
-    function initialize(
-        address _yieldToken,
-        address _recipientRegistry,
-        address _votingModule
-    ) external initializer {
+    function initialize(address _yieldToken, address _recipientRegistry, address _votingModule) external initializer {
         __BaseDistributionStrategy_init(_yieldToken, _recipientRegistry);
         if (_votingModule == address(0)) revert ZeroAddress();
         votingModule = IVotingModule(_votingModule);

@@ -13,7 +13,12 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 /// @notice Abstract base contract for distribution strategies that also acts as a module
 /// @dev Provides common functionality for yield distribution strategies using recipient registry
 ///      Merges functionality from DistributionStrategyModule for single strategy deployment
-abstract contract BaseDistributionStrategy is Initializable, IDistributionStrategy, IDistributionStrategyModule, OwnableUpgradeable {
+abstract contract BaseDistributionStrategy is
+    Initializable,
+    IDistributionStrategy,
+    IDistributionStrategyModule,
+    OwnableUpgradeable
+{
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
@@ -26,18 +31,18 @@ abstract contract BaseDistributionStrategy is Initializable, IDistributionStrate
     /// @dev Initializes the base distribution strategy
     /// @param _yieldToken Address of the yield token to distribute
     /// @param _recipientRegistry Address of the recipient registry
-    function __BaseDistributionStrategy_init(
-        address _yieldToken,
-        address _recipientRegistry
-    ) internal onlyInitializing {
+    function __BaseDistributionStrategy_init(address _yieldToken, address _recipientRegistry)
+        internal
+        onlyInitializing
+    {
         __Ownable_init(msg.sender);
         __BaseDistributionStrategy_init_unchained(_yieldToken, _recipientRegistry);
     }
 
-    function __BaseDistributionStrategy_init_unchained(
-        address _yieldToken,
-        address _recipientRegistry
-    ) internal onlyInitializing {
+    function __BaseDistributionStrategy_init_unchained(address _yieldToken, address _recipientRegistry)
+        internal
+        onlyInitializing
+    {
         if (_yieldToken == address(0)) revert ZeroAddress();
         if (_recipientRegistry == address(0)) revert ZeroAddress();
         yieldToken = IERC20(_yieldToken);
@@ -75,35 +80,35 @@ abstract contract BaseDistributionStrategy is Initializable, IDistributionStrate
     }
 
     // IDistributionStrategyModule implementation for single strategy
-    
+
     /// @inheritdoc IDistributionStrategyModule
     function distributeToStrategy(address strategy, uint256 amount) external override onlyOwner {
         // For single strategy deployment, this contract is the strategy
         require(strategy == address(this), "Invalid strategy");
         if (amount == 0) revert ZeroAmount();
-        
+
         // Pull tokens from sender and distribute
         yieldToken.safeTransferFrom(msg.sender, address(this), amount);
         distribute(amount);
-        
+
         emit YieldDistributed(strategy, amount);
     }
-    
+
     /// @inheritdoc IDistributionStrategyModule
     function addStrategy(address) external pure override {
         revert("Single strategy mode");
     }
-    
+
     /// @inheritdoc IDistributionStrategyModule
     function removeStrategy(address) external pure override {
         revert("Single strategy mode");
     }
-    
+
     /// @inheritdoc IDistributionStrategyModule
     function isStrategy(address strategy) external view override returns (bool) {
         return strategy == address(this);
     }
-    
+
     /// @inheritdoc IDistributionStrategyModule
     function getStrategies() external view override returns (address[] memory) {
         address[] memory strategies = new address[](1);
