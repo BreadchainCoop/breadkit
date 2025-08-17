@@ -139,25 +139,6 @@ abstract contract AbstractCycleModule is ICycleModule {
         emit CycleTransitionValidated(currentCycle);
     }
 
-    /// @notice Gets information about the current cycle
-    /// @return Information about the current cycle
-    function getCycleInfo() external view virtual onlyInitialized returns (CycleInfo memory) {
-        uint256 endBlock = lastCycleStartBlock + cycleLength;
-        uint256 blocksRemaining = 0;
-
-        if (block.number < endBlock) {
-            blocksRemaining = endBlock - block.number;
-        }
-
-        return CycleInfo({
-            cycleNumber: currentCycle,
-            startBlock: lastCycleStartBlock,
-            endBlock: endBlock,
-            blocksRemaining: blocksRemaining,
-            isActive: true
-        });
-    }
-
     /// @notice Gets the number of blocks until the next cycle
     /// @return The number of blocks remaining in the current cycle
     function getBlocksUntilNextCycle() external view virtual onlyInitialized returns (uint256) {

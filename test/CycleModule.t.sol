@@ -45,9 +45,6 @@ contract CycleModuleTest is Test {
         uninitializedModule.startNewCycle();
 
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
-        uninitializedModule.getCycleInfo();
-
-        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.getBlocksUntilNextCycle();
 
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
@@ -101,21 +98,6 @@ contract CycleModuleTest is Test {
 
         cycleModule.setAuthorization(user, false);
         assertFalse(cycleModule.authorized(user));
-    }
-
-    function testGetCycleInfo() public {
-        CycleModule.CycleInfo memory info = cycleModule.getCycleInfo();
-
-        assertEq(info.cycleNumber, 1);
-        assertEq(info.startBlock, START_BLOCK);
-        assertEq(info.endBlock, START_BLOCK + CYCLE_LENGTH);
-        assertEq(info.blocksRemaining, CYCLE_LENGTH);
-        assertTrue(info.isActive);
-
-        // Move halfway through cycle
-        vm.roll(START_BLOCK + 50);
-        info = cycleModule.getCycleInfo();
-        assertEq(info.blocksRemaining, 50);
     }
 
     function testGetBlocksUntilNextCycle() public view {
@@ -181,10 +163,6 @@ contract CycleModuleTest is Test {
         vm.roll(START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
         cycleModule.startNewCycle();
         assertEq(cycleModule.getCurrentCycle(), 3);
-
-        // Verify cycle info
-        CycleModule.CycleInfo memory info = cycleModule.getCycleInfo();
-        assertEq(info.cycleNumber, 3);
-        assertEq(info.startBlock, START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
+        assertEq(cycleModule.lastCycleStartBlock(), START_BLOCK + CYCLE_LENGTH + CYCLE_LENGTH);
     }
 }
