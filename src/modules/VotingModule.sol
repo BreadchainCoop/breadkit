@@ -11,35 +11,67 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title VotingModule
+/// @author BreadKit
 /// @notice Main voting module implementation with signature-based voting and multiple strategies
-/// @dev Implements EIP-712 compliant signature verification for gasless voting
+/// @dev Implements EIP-712 compliant signature verification for gasless voting.
+///      Supports multiple voting power calculation strategies and batch vote submission.
+///      Prevents vote recasting within cycles and uses nonces for replay protection.
 contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
 
-    // Constants
+    // ============ Constants ============
+    
+    /// @notice Precision factor for calculations to prevent rounding errors
     uint256 public constant PRECISION = 1e18;
+    
+    /// @notice Maximum number of votes that can be submitted in a single batch
     uint256 public constant MAX_BATCH_SIZE = 100;
 
-    // EIP-712 type hash for vote data
+    /// @notice EIP-712 type hash for vote data structure
     bytes32 public constant VOTE_TYPEHASH = keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)");
 
-    // Storage
+    // ============ State Variables ============
+    
+    /// @notice Maximum points that can be allocated to a single recipient
     uint256 public maxPoints;
+    
+    /// @notice Current voting cycle number
     uint256 public currentCycle;
+    
+    /// @notice Block number when the current cycle started
     uint256 public lastCycleStart;
 
-    // Voting power strategies
+    /// @notice Array of voting power calculation strategies
     IVotingPowerStrategy[] public votingPowerStrategies;
 
-    // Vote tracking
+    // ============ Mappings ============
+    
+    /// @notice Tracks used nonces for each voter to prevent replay attacks
+    /// @dev voter => nonce => used
     mapping(address => mapping(uint256 => bool)) public usedNonces;
+    
+    /// @notice Block number when an account last voted
+    /// @dev voter => block number
     mapping(address => uint256) public accountLastVoted;
+    
+    /// @notice Vote distribution across projects for each cycle
+    /// @dev cycle => array of weighted votes per project
     mapping(uint256 => uint256[]) public projectDistributions;
+    
+    /// @notice Total voting power used in each cycle
+    /// @dev cycle => total voting power
     mapping(uint256 => uint256) public cycleVotingPower;
+    
+    /// @notice Current vote count for each cycle
+    /// @dev cycle => vote count
     mapping(uint256 => uint256) public currentVotes;
 
-    // Module references
+    // ============ External References ============
+    
+    /// @notice Reference to the distribution module for yield allocation
     IDistributionModule public distributionModule;
+    
+    /// @notice Reference to the recipient registry for validation
     IMockRecipientRegistry public recipientRegistry;
 
     // Events
@@ -252,14 +284,21 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @notice Starts a new voting cycle
+    /// @dev Only callable by owner. Increments cycle counter and resets cycle start block.
     function startNewCycle() external onlyOwner {
         currentCycle++;
         lastCycleStart = block.number;
         emit CycleStarted(currentCycle, block.number);
     }
 
-    // Internal functions
+    // ============ Internal Functions ============
 
+    /// @notice Processes a single vote with signature verification
+    /// @dev Validates signature, nonce, and voting power before processing the vote
+    /// @param voter Address of the voter
+    /// @param points Array of points to allocate to each recipient
+    /// @param nonce Unique nonce for replay protection
+    /// @param signature EIP-712 signature from the voter
     function _castSingleVote(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
         internal
     {
@@ -288,6 +327,10 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         emit VoteCastWithSignature(voter, points, votingPower, nonce);
     }
 
+    /// @notice Calculates total voting power across all strategies
+    /// @dev Aggregates voting power from all configured strategies
+    /// @param account Address to calculate voting power for
+    /// @return totalPower Combined voting power from all strategies
     function _calculateTotalVotingPower(address account) internal view returns (uint256) {
         uint256 totalPower = 0;
 
@@ -298,6 +341,12 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         return totalPower;
     }
 
+    /// @notice Processes and records a vote
+    /// @dev Updates project distributions and cycle voting power. Prevents vote recasting.
+    /// @param voter Address of the voter
+    /// @param points Array of points allocated to each recipient
+    /// @param votingPower Total voting power of the voter
+    /// @param hasVotedInCycle Whether the voter has already voted in this cycle
     function _processVote(address voter, uint256[] calldata points, uint256 votingPower, bool hasVotedInCycle)
         internal
     {

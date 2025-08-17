@@ -2,14 +2,26 @@
 pragma solidity ^0.8.20;
 
 /// @title VoteValidator
+/// @author BreadKit
 /// @notice Utility contract for validating vote parameters
-/// @dev Provides validation logic for vote points and cycle states
+/// @dev Provides pure functions for validating vote points, signatures, and batch parameters.
+///      All functions are stateless and can be used by any contract needing vote validation.
 contract VoteValidator {
-    // Errors
+    // ============ Errors ============
+    
+    /// @notice Thrown when points distribution is invalid
     error InvalidPointsDistribution();
+    
+    /// @notice Thrown when points exceed maximum allowed
     error ExceedsMaxPoints();
+    
+    /// @notice Thrown when total vote points are zero
     error ZeroVotePoints();
+    
+    /// @notice Thrown when nonce is invalid
     error InvalidNonce();
+    
+    /// @notice Thrown when nonce has already been used
     error NonceAlreadyUsed();
 
     /// @notice Validates that points distribution is valid
@@ -94,9 +106,12 @@ contract VoteValidator {
         return true;
     }
 
-    // Internal helper functions
+    // ============ Internal Functions ============
 
-    /// @dev Recovers signer address from signature
+    /// @dev Recovers signer address from signature using ecrecover
+    /// @param digest The message digest that was signed
+    /// @param signature The ECDSA signature (65 bytes: r + s + v)
+    /// @return The recovered signer address
     function _recoverSigner(bytes32 digest, bytes calldata signature) private pure returns (address) {
         require(signature.length == 65, "Invalid signature length");
 

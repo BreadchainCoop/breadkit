@@ -5,19 +5,26 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /// @title SignatureVerifier
+/// @author BreadKit
 /// @notice Utility contract for verifying EIP-712 signatures for votes
-/// @dev Handles cryptographic signature verification for voting operations
+/// @dev Implements EIP-712 structured data hashing and ECDSA signature verification.
+///      Used for gasless voting where votes are prepared off-chain and submitted with signatures.
 contract SignatureVerifier is EIP712 {
     using ECDSA for bytes32;
 
-    // EIP-712 type hash for vote data
+    // ============ Constants ============
+
+    /// @notice EIP-712 type hash for single vote data structure
+    /// @dev Used to create structured hash of vote parameters
     bytes32 public constant VOTE_TYPEHASH = keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)");
 
-    // EIP-712 type hash for batch vote data
+    /// @notice EIP-712 type hash for batch vote data structure
+    /// @dev Used for batch vote operations (currently unused but available for future use)
     bytes32 public constant BATCH_VOTE_TYPEHASH =
         keccak256("BatchVote(address[] voters,bytes32 pointsHashArray,uint256[] nonces)");
 
-    /// @notice Constructs the signature verifier
+    /// @notice Constructs the signature verifier with EIP-712 domain
+    /// @dev Initializes with domain name "BreadKit Voting" and version "1"
     constructor() EIP712("BreadKit Voting", "1") {}
 
     /// @notice Verifies a vote signature

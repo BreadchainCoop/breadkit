@@ -7,26 +7,49 @@ import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol
 import {Ownable} from "@solady/contracts/auth/Ownable.sol";
 
 /// @title TimeWeightedVotingPower
+/// @author BreadKit
 /// @notice Time-weighted voting power calculation strategy based on breadchain pattern
-/// @dev Calculates voting power weighted by time held during a period
+/// @dev Implements IVotingPowerStrategy with time-weighted calculations.
+///      Voting power is calculated based on how long tokens were held during a specific period.
+///      This encourages long-term holding and participation.
 contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
     using Checkpoints for Checkpoints.Trace208;
 
-    // Errors
+    // ============ Errors ============
+    
+    /// @notice Thrown when attempting to initialize with zero address token
     error InvalidToken();
+    
+    /// @notice Thrown when start block is not before end block
     error StartMustBeBeforeEnd();
+    
+    /// @notice Thrown when end block is in the future
     error EndAfterCurrentBlock();
 
-    // Storage
+    // ============ Immutable Storage ============
+    
+    /// @notice The ERC20Votes token used for voting power calculation
+    /// @dev Must implement the IVotes interface from OpenZeppelin
     IVotes public immutable votingToken;
+    
+    // ============ State Variables ============
+    
+    /// @notice Block number when the previous voting cycle started
     uint256 public previousCycleStart;
+    
+    /// @notice Block number when yield was last claimed
     uint256 public lastClaimedBlock;
 
-    // Events
+    // ============ Events ============
+    
+    /// @notice Emitted when cycle bounds are updated
+    /// @param previousCycleStart New previous cycle start block
+    /// @param lastClaimedBlock New last claimed block
     event CycleBoundsUpdated(uint256 previousCycleStart, uint256 lastClaimedBlock);
 
     /// @notice Constructs the time-weighted voting power strategy
-    /// @param _votingToken The token to use for voting power calculation
+    /// @dev Initializes the strategy with a voting token and cycle bounds
+    /// @param _votingToken The ERC20Votes token to use for voting power calculation
     /// @param _previousCycleStart The start block of the previous cycle
     /// @param _lastClaimedBlock The last block where yield was claimed
     constructor(IVotes _votingToken, uint256 _previousCycleStart, uint256 _lastClaimedBlock) {
@@ -43,11 +66,12 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
         return getVotingPowerForPeriod(account, previousCycleStart, lastClaimedBlock);
     }
 
-    /// @notice Get voting power for a specific period (simplified implementation)
-    /// @dev Simplified time-weighted calculation using available IVotes interface
+    /// @notice Calculates time-weighted voting power for a specific period
+    /// @dev Uses a simplified average of start and end voting power weighted by period length.
+    ///      Reverts if start >= end or if end > current block.
     /// @param account The account to calculate voting power for
-    /// @param start The start block of the period
-    /// @param end The end block of the period
+    /// @param start The start block of the period (inclusive)
+    /// @param end The end block of the period (inclusive)
     /// @return The time-weighted voting power for the period
     function getVotingPowerForPeriod(address account, uint256 start, uint256 end) public view returns (uint256) {
         if (start >= end) revert StartMustBeBeforeEnd();
@@ -71,7 +95,8 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
         return averagePower * periodLength;
     }
 
-    /// @notice Updates the cycle bounds
+    /// @notice Updates the cycle bounds for voting power calculations
+    /// @dev Only callable by owner. Used to synchronize with yield distribution cycles.
     /// @param _previousCycleStart New previous cycle start block
     /// @param _lastClaimedBlock New last claimed block
     function updateCycleBounds(uint256 _previousCycleStart, uint256 _lastClaimedBlock) external onlyOwner {

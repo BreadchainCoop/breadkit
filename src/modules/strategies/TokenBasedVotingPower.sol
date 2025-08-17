@@ -5,17 +5,26 @@ import {IVotingPowerStrategy} from "../../interfaces/IVotingPowerStrategy.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /// @title TokenBasedVotingPower
-/// @notice Simple token balance-based voting power calculation strategy
-/// @dev Calculates voting power based on token holdings without staking
+/// @author BreadKit
+/// @notice Token balance-based voting power calculation strategy
+/// @dev Implements IVotingPowerStrategy using ERC20Votes tokens.
+///      Voting power is determined by the delegated vote balance of the token holder.
+///      Users must delegate to themselves or another address to have voting power.
 contract TokenBasedVotingPower is IVotingPowerStrategy {
-    // Errors
+    // ============ Errors ============
+    
+    /// @notice Thrown when attempting to initialize with zero address token
     error InvalidToken();
 
-    // Storage
+    // ============ Immutable Storage ============
+    
+    /// @notice The ERC20Votes token used for voting power calculation
+    /// @dev Must implement the IVotes interface from OpenZeppelin
     IVotes public immutable votingToken;
 
     /// @notice Constructs the token-based voting power strategy
-    /// @param _votingToken The token to use for voting power calculation
+    /// @dev Reverts if token address is zero
+    /// @param _votingToken The ERC20Votes token to use for voting power calculation
     constructor(IVotes _votingToken) {
         if (address(_votingToken) == address(0)) revert InvalidToken();
         votingToken = _votingToken;
