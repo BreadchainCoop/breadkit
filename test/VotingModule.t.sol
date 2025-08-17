@@ -18,15 +18,15 @@ import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
 // Mock token implementation for testing
 contract MockToken is ERC20, ERC20Votes, ERC20Permit {
     constructor() ERC20("Mock Token", "MOCK") ERC20Permit("Mock Token") {}
-    
+
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
-    
+
     function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._update(from, to, amount);
     }
-    
+
     function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
         return ERC20Permit.nonces(owner);
     }
@@ -70,22 +70,22 @@ contract VotingModuleTest is Test {
 
         // Deploy mock token
         token = new MockToken();
-        
+
         // Mint tokens to test accounts
         token.mint(voter1, 5 ether);
         token.mint(voter2, 3 ether);
         token.mint(voter3, 2 ether);
-        
+
         // Delegate voting power to themselves (required for ERC20Votes)
         vm.prank(voter1);
         token.delegate(voter1);
-        
+
         vm.prank(voter2);
         token.delegate(voter2);
-        
+
         vm.prank(voter3);
         token.delegate(voter3);
-        
+
         // Deploy recipient registry mock with 3 recipients
         address[] memory recipients = new address[](3);
         recipients[0] = address(0x111);
