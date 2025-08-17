@@ -91,7 +91,7 @@ abstract contract AbstractCycleModule is ICycleModule {
         if (initialized) {
             revert AlreadyInitialized();
         }
-        
+
         if (_cycleLength == 0) {
             revert InvalidCycleLength();
         }
@@ -128,11 +128,6 @@ abstract contract AbstractCycleModule is ICycleModule {
     /// @dev Only callable by authorized contracts when cycle is complete
     function startNewCycle() external virtual onlyAuthorized onlyInitialized {
         if (!isCycleComplete()) {
-            revert InvalidCycleTransition();
-        }
-
-        // Additional validation can be implemented by inheriting contracts
-        if (!_validateCycleTransition()) {
             revert InvalidCycleTransition();
         }
 
@@ -194,14 +189,5 @@ abstract contract AbstractCycleModule is ICycleModule {
         cycleLength = newCycleLength;
 
         emit CycleLengthUpdated(oldLength, newCycleLength);
-    }
-
-    /// @notice Hook for additional cycle transition validation
-    /// @dev Override this function in inheriting contracts to add custom validation
-    /// @return Whether the cycle transition is valid
-    function _validateCycleTransition() internal view virtual returns (bool) {
-        // Default implementation allows transition when cycle is complete
-        // Inheriting contracts can add additional checks
-        return true;
     }
 }
