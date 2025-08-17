@@ -31,6 +31,9 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     IVotingModule public votingModule;
     IAMMVotingPowerModule public ammVotingPower;
     IERC20 public yieldToken;
+    
+    address public equalDistributionStrategy;
+    address public votingDistributionStrategy;
 
     address[] public projects;
     mapping(address => bool) public isProject;
@@ -71,14 +74,19 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         uint256 totalYield = yieldToken.balanceOf(address(this));
         if (totalYield == 0) revert InsufficientYield();
 
-        (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateSplit(totalYield);
+        // Calculate split internally
+        uint256 fixedAmount = totalYield / yieldFixedSplitDivisor;
+        uint256 votedAmount = totalYield - fixedAmount;
 
-        if (fixedAmount > 0 && projects.length > 0) {
-            _distributeFixedPortion(fixedAmount);
+        // Distribute to strategies if configured
+        if (fixedAmount > 0 && equalDistributionStrategy != address(0)) {
+            yieldToken.safeTransfer(address(strategyModule), fixedAmount);
+            strategyModule.distributeToStrategy(equalDistributionStrategy, fixedAmount);
         }
 
-        if (votedAmount > 0 && totalVotes > 0) {
-            _distributeVotedPortion(votedAmount);
+        if (votedAmount > 0 && votingDistributionStrategy != address(0)) {
+            yieldToken.safeTransfer(address(strategyModule), votedAmount);
+            strategyModule.distributeToStrategy(votingDistributionStrategy, votedAmount);
         }
 
         lastDistributionTime = block.timestamp;
@@ -102,51 +110,6 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         emit CycleCompleted(block.number / cycleLength, block.number);
     }
 
-    /// @dev Distributes the fixed portion equally among all projects
-    /// @param fixedAmount Amount to distribute equally
-    function _distributeFixedPortion(uint256 fixedAmount) internal {
-        uint256 amountPerProject = fixedAmount / projects.length;
-        uint256 distributed = 0;
-
-        for (uint256 i = 0; i < projects.length; i++) {
-            uint256 projectShare;
-
-            // Last project gets remainder to handle rounding
-            if (i == projects.length - 1) {
-                projectShare = fixedAmount - distributed;
-            } else {
-                projectShare = amountPerProject;
-                distributed += projectShare;
-            }
-
-            if (projectShare > 0) {
-                yieldToken.safeTransfer(projects[i], projectShare);
-            }
-        }
-    }
-
-    /// @dev Distributes the voted portion based on current voting results
-    /// @param votedAmount Amount to distribute based on votes
-    function _distributeVotedPortion(uint256 votedAmount) internal {
-        uint256 distributed = 0;
-
-        for (uint256 i = 0; i < projects.length; i++) {
-            if (currentDistribution[i] > 0) {
-                uint256 projectShare;
-
-                if (i == projects.length - 1) {
-                    projectShare = votedAmount - distributed;
-                } else {
-                    projectShare = (votedAmount * currentDistribution[i]) / totalVotes;
-                    distributed += projectShare;
-                }
-
-                if (projectShare > 0) {
-                    yieldToken.safeTransfer(projects[i], projectShare);
-                }
-            }
-        }
-    }
 
     /// @inheritdoc IDistributionModule
     function getCurrentDistributionState()
@@ -156,7 +119,9 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         returns (IDistributionModule.DistributionState memory state)
     {
         uint256 totalYield = yieldToken.balanceOf(address(this));
-        (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateSplit(totalYield);
+        // Calculate split internally
+        uint256 fixedAmount = totalYield / yieldFixedSplitDivisor;
+        uint256 votedAmount = totalYield - fixedAmount;
 
         uint256[] memory votedDistributions = new uint256[](projects.length);
         uint256[] memory fixedDistributions = new uint256[](projects.length);
@@ -225,9 +190,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         if (_yieldFixedSplitDivisor == 0) revert InvalidDivisor();
         yieldFixedSplitDivisor = _yieldFixedSplitDivisor;
 
-        if (address(strategyModule) != address(0)) {
-            strategyModule.updateSplitRatio(_yieldFixedSplitDivisor);
-        }
+        // Split ratio is now managed internally
 
         emit YieldFixedSplitDivisorUpdated(_yieldFixedSplitDivisor);
     }
@@ -252,7 +215,28 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     function setStrategyModule(address _strategyModule) external onlyOwner {
         if (_strategyModule == address(0)) revert ZeroAddress();
         strategyModule = IDistributionStrategyModule(_strategyModule);
-        strategyModule.updateSplitRatio(yieldFixedSplitDivisor);
+    }
+    
+    /// @notice Sets the equal distribution strategy
+    /// @param _strategy Address of the equal distribution strategy
+    function setEqualDistributionStrategy(address _strategy) external onlyOwner {
+        if (_strategy == address(0)) revert ZeroAddress();
+        equalDistributionStrategy = _strategy;
+        // Register with strategy module if not already registered
+        if (!strategyModule.isStrategy(_strategy)) {
+            strategyModule.addStrategy(_strategy);
+        }
+    }
+    
+    /// @notice Sets the voting distribution strategy
+    /// @param _strategy Address of the voting distribution strategy
+    function setVotingDistributionStrategy(address _strategy) external onlyOwner {
+        if (_strategy == address(0)) revert ZeroAddress();
+        votingDistributionStrategy = _strategy;
+        // Register with strategy module if not already registered
+        if (!strategyModule.isStrategy(_strategy)) {
+            strategyModule.addStrategy(_strategy);
+        }
     }
 
     /// @notice Adds a project to receive distributions

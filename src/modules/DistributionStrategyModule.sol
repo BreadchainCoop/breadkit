@@ -8,88 +8,75 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@solady/contracts/auth/Ownable.sol";
 
 /// @title DistributionStrategyModule
-/// @notice Orchestrates yield distribution between equal and voting strategies
-/// @dev Manages the split ratio and distribution to different strategies
+/// @notice Manages yield distribution to registered strategies
+/// @dev Receives yield and distributes to strategies as instructed
 contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     using SafeERC20 for IERC20;
 
-    error InvalidDivisor();
     error ZeroAddress();
     error ZeroAmount();
-    error StrategiesNotSet();
-
-    uint256 public constant MIN_DIVISOR = 1;
+    error StrategyNotRegistered();
+    error StrategyAlreadyRegistered();
 
     IERC20 public immutable yieldToken;
-    IDistributionStrategy public equalDistributionStrategy;
-    IDistributionStrategy public votingDistributionStrategy;
-    uint256 public splitDivisor;
+    
+    mapping(address => bool) public strategies;
+    address[] public strategyList;
 
-    constructor(address _yieldToken, uint256 _initialDivisor) {
+    constructor(address _yieldToken) {
         if (_yieldToken == address(0)) revert ZeroAddress();
-        if (_initialDivisor == 0) revert InvalidDivisor();
-
         yieldToken = IERC20(_yieldToken);
-        splitDivisor = _initialDivisor;
         _initializeOwner(msg.sender);
     }
 
-    /// @notice Sets the distribution strategies
-    /// @param _equalStrategy Address of equal distribution strategy
-    /// @param _votingStrategy Address of voting distribution strategy
-    function setStrategies(address _equalStrategy, address _votingStrategy) external onlyOwner {
-        if (_equalStrategy == address(0) || _votingStrategy == address(0)) revert ZeroAddress();
+    /// @inheritdoc IDistributionStrategyModule
+    function distributeToStrategy(address strategy, uint256 amount) external override onlyOwner {
+        if (amount == 0) revert ZeroAmount();
+        if (!strategies[strategy]) revert StrategyNotRegistered();
 
-        equalDistributionStrategy = IDistributionStrategy(_equalStrategy);
-        votingDistributionStrategy = IDistributionStrategy(_votingStrategy);
+        // Transfer yield to strategy and trigger distribution
+        yieldToken.safeTransfer(strategy, amount);
+        IDistributionStrategy(strategy).distribute(amount);
 
-        emit StrategiesUpdated(_equalStrategy, _votingStrategy);
+        emit YieldDistributed(strategy, amount);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function distributeYield(uint256 totalYield) external override {
-        if (totalYield == 0) revert ZeroAmount();
-        if (address(equalDistributionStrategy) == address(0) || address(votingDistributionStrategy) == address(0)) {
-            revert StrategiesNotSet();
-        }
+    function addStrategy(address strategy) external override onlyOwner {
+        if (strategy == address(0)) revert ZeroAddress();
+        if (strategies[strategy]) revert StrategyAlreadyRegistered();
 
-        (uint256 equalAmount, uint256 votingAmount) = calculateSplit(totalYield);
+        strategies[strategy] = true;
+        strategyList.push(strategy);
 
-        // Transfer and distribute to equal strategy
-        if (equalAmount > 0) {
-            yieldToken.safeTransfer(address(equalDistributionStrategy), equalAmount);
-            equalDistributionStrategy.distribute(equalAmount);
-        }
-
-        // Transfer and distribute to voting strategy
-        if (votingAmount > 0) {
-            yieldToken.safeTransfer(address(votingDistributionStrategy), votingAmount);
-            votingDistributionStrategy.distribute(votingAmount);
-        }
-
-        emit YieldDistributed(totalYield, equalAmount, votingAmount);
+        emit StrategyAdded(strategy);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function updateSplitRatio(uint256 divisor) external override onlyOwner {
-        if (divisor < MIN_DIVISOR) revert InvalidDivisor();
+    function removeStrategy(address strategy) external override onlyOwner {
+        if (!strategies[strategy]) revert StrategyNotRegistered();
 
-        uint256 oldDivisor = splitDivisor;
-        splitDivisor = divisor;
+        strategies[strategy] = false;
+        
+        // Remove from list
+        for (uint256 i = 0; i < strategyList.length; i++) {
+            if (strategyList[i] == strategy) {
+                strategyList[i] = strategyList[strategyList.length - 1];
+                strategyList.pop();
+                break;
+            }
+        }
 
-        emit SplitRatioUpdated(oldDivisor, divisor);
+        emit StrategyRemoved(strategy);
     }
 
     /// @inheritdoc IDistributionStrategyModule
-    function calculateSplit(uint256 totalYield)
-        public
-        view
-        override
-        returns (uint256 equalAmount, uint256 votingAmount)
-    {
-        if (totalYield == 0) return (0, 0);
+    function isStrategy(address strategy) external view override returns (bool) {
+        return strategies[strategy];
+    }
 
-        equalAmount = totalYield / splitDivisor;
-        votingAmount = totalYield - equalAmount;
+    /// @inheritdoc IDistributionStrategyModule
+    function getStrategies() external view override returns (address[] memory) {
+        return strategyList;
     }
 }
