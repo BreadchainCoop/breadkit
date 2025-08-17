@@ -86,7 +86,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         // Prepare arrays for event
         uint256[] memory votedDistributions = new uint256[](projects.length);
         uint256[] memory fixedDistributions = new uint256[](projects.length);
-        
+
         // Populate distribution arrays
         for (uint256 i = 0; i < projects.length; i++) {
             fixedDistributions[i] = fixedAmount / projects.length;
@@ -97,7 +97,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
                 votedDistributions[i] = (votedAmount * currentDistribution[i]) / totalVotes;
             }
         }
-        
+
         emit YieldDistributed(totalYield, totalVotes, projects, votedDistributions, fixedDistributions);
         emit CycleCompleted(block.number / cycleLength, block.number);
     }
@@ -149,13 +149,18 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     }
 
     /// @inheritdoc IDistributionModule
-    function getCurrentDistributionState() external view override returns (IDistributionModule.DistributionState memory state) {
+    function getCurrentDistributionState()
+        external
+        view
+        override
+        returns (IDistributionModule.DistributionState memory state)
+    {
         uint256 totalYield = yieldToken.balanceOf(address(this));
         (uint256 fixedAmount, uint256 votedAmount) = strategyModule.calculateSplit(totalYield);
-        
+
         uint256[] memory votedDistributions = new uint256[](projects.length);
         uint256[] memory fixedDistributions = new uint256[](projects.length);
-        
+
         for (uint256 i = 0; i < projects.length; i++) {
             fixedDistributions[i] = fixedAmount / projects.length;
             if (i == projects.length - 1) {
@@ -165,7 +170,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
                 votedDistributions[i] = (votedAmount * currentDistribution[i]) / totalVotes;
             }
         }
-        
+
         state = IDistributionModule.DistributionState({
             totalYield: totalYield,
             fixedAmount: fixedAmount,
