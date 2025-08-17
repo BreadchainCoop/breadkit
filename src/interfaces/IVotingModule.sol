@@ -23,11 +23,6 @@ interface IVotingModule {
     /// @return The current voting power of the account
     function getVotingPower(address account) external view returns (uint256);
 
-    /// @notice Casts a vote with points for each project
-    /// @dev This function is an alias for vote() and records a user's vote with points
-    /// @param points Array of points allocated to each project
-    function castVote(uint256[] calldata points) external;
-
     /// @notice Gets the current distribution of votes across projects
     /// @dev Returns the current voting distribution showing how votes are allocated
     /// @return An array representing the current distribution of votes

@@ -158,11 +158,6 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     }
 
     /// @inheritdoc IVotingModule
-    function castVote(uint256[] calldata points) external override {
-        vote(points);
-    }
-
-    /// @inheritdoc IVotingModule
     function delegate(address delegatee) external override {
         // Delegation is handled at the token level (ERC20Votes)
         // This is a no-op but kept for interface compatibility
