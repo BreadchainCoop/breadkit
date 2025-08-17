@@ -4,12 +4,11 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import "../src/modules/automation/MockDistributionManager.sol";
 import "../src/modules/automation/ChainlinkAutomation.sol";
-import "../src/modules/automation/GelatoAutomation.sol";
 
 /// @title DeployMockAutomation
-/// @notice Deploy script for mock distribution manager and automation contracts
+/// @notice Deploy script for mock distribution manager with Chainlink automation
 contract DeployMockAutomation is Script {
-    function run() external returns (address mockDistributionManager, address chainlinkAuto, address gelatoAuto) {
+    function run() external returns (address mockDistributionManager, address chainlinkAuto) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
@@ -22,10 +21,6 @@ contract DeployMockAutomation is Script {
         ChainlinkAutomation chainlink = new ChainlinkAutomation(address(mockDM));
         console.log("ChainlinkAutomation deployed at:", address(chainlink));
 
-        // Deploy GelatoAutomation with MockDistributionManager
-        GelatoAutomation gelato = new GelatoAutomation(address(mockDM));
-        console.log("GelatoAutomation deployed at:", address(gelato));
-
         // Log initial state
         console.log("Current block:", block.number);
         console.log("Last distribution block:", mockDM.getLastDistributionBlock());
@@ -34,7 +29,7 @@ contract DeployMockAutomation is Script {
 
         vm.stopBroadcast();
 
-        return (address(mockDM), address(chainlink), address(gelato));
+        return (address(mockDM), address(chainlink));
     }
 
     /// @notice Deploy only the mock distribution manager
@@ -64,21 +59,5 @@ contract DeployMockAutomation is Script {
         vm.stopBroadcast();
 
         return address(chainlink);
-    }
-
-    /// @notice Deploy gelato automation with existing distribution manager
-    function deployGelatoAutomation(address distributionManager) external returns (address) {
-        require(distributionManager != address(0), "Invalid distribution manager");
-
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        GelatoAutomation gelato = new GelatoAutomation(distributionManager);
-        console.log("GelatoAutomation deployed at:", address(gelato));
-        console.log("Using DistributionManager at:", distributionManager);
-
-        vm.stopBroadcast();
-
-        return address(gelato);
     }
 }
