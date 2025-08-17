@@ -3,10 +3,10 @@ pragma solidity ^0.8.20;
 
 import {IVotingPowerStrategy} from "./IVotingPowerStrategy.sol";
 
-/// @title IVotingModule
-/// @notice Interface for the voting module that manages project voting with signature-based voting
-/// @dev This module is responsible for handling voting on projects and tracking voting power
-interface IVotingModule {
+/// @title IBasisPointsVotingModule
+/// @notice Interface for the basis points voting module that manages project voting with signature-based voting
+/// @dev This module is responsible for handling voting on projects using basis points and tracking voting power
+interface IBasisPointsVotingModule {
     /// @notice Delegates voting power to another address
     /// @dev This function allows a user to delegate their voting power to another address
     /// @param delegatee The address to delegate voting power to

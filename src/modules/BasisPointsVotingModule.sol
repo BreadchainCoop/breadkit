@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IVotingModule} from "../interfaces/IVotingModule.sol";
+import {IBasisPointsVotingModule} from "../interfaces/IBasisPointsVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
 import {IMockRecipientRegistry} from "../interfaces/IMockRecipientRegistry.sol";
@@ -10,13 +10,13 @@ import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/crypt
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-/// @title VotingModule
+/// @title BasisPointsVotingModule
 /// @author BreadKit
-/// @notice Main voting module implementation with signature-based voting and multiple strategies
+/// @notice Basis points voting module implementation with signature-based voting and multiple strategies
 /// @dev Implements EIP-712 compliant signature verification for gasless voting.
 ///      Supports multiple voting power calculation strategies and batch vote submission.
 ///      Prevents vote recasting within cycles and uses nonces for replay protection.
-contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, OwnableUpgradeable {
+contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP712Upgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
 
     // ============ Constants ============
@@ -119,7 +119,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         emit VotingModuleInitialized(_strategies);
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
         external
         override
@@ -127,7 +127,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         _castSingleVote(voter, points, nonce, signature);
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function castBatchVotesWithSignature(
         address[] calldata voters,
         uint256[][] calldata points,
@@ -147,13 +147,13 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         emit BatchVotesCast(voters, nonces);
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function delegate(address delegatee) external override {
         // Delegation is handled at the token level (ERC20Votes)
         // This is a no-op but kept for interface compatibility
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         if (points.length == 0) return false;
 
@@ -172,7 +172,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         return totalPoints > 0;
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
         public
         view
@@ -186,27 +186,27 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         return signer == voter && !usedNonces[voter][nonce];
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function getVotingPower(address account) external view override returns (uint256) {
         return _calculateTotalVotingPower(account);
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function getCurrentVotingDistribution() external view override returns (uint256[] memory) {
         return projectDistributions[currentCycle];
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function DOMAIN_SEPARATOR() external view override returns (bytes32) {
         return _domainSeparatorV4();
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function isNonceUsed(address voter, uint256 nonce) external view override returns (bool) {
         return usedNonces[voter][nonce];
     }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function getVotingPowerStrategies() external view override returns (IVotingPowerStrategy[] memory) {
         return votingPowerStrategies;
     }
@@ -221,7 +221,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     //     revert("getRequiredVotes: Not yet implemented - see issue #43");
     // }
 
-    /// @inheritdoc IVotingModule
+    /// @inheritdoc IBasisPointsVotingModule
     function setMaxPoints(uint256 _maxPoints) external override onlyOwner {
         maxPoints = _maxPoints;
         emit MaxPointsSet(_maxPoints);
