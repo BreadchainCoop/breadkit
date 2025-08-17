@@ -7,11 +7,6 @@ import {IVotingPowerStrategy} from "./IVotingPowerStrategy.sol";
 /// @notice Interface for the voting module that manages project voting with signature-based voting
 /// @dev This module is responsible for handling voting on projects and tracking voting power
 interface IVotingModule {
-    /// @notice Submits a vote with points for each project
-    /// @dev This function records a user's vote with points for each project
-    /// @param points Array of points allocated to each project
-    function vote(uint256[] calldata points) external;
-
     /// @notice Delegates voting power to another address
     /// @dev This function allows a user to delegate their voting power to another address
     /// @param delegatee The address to delegate voting power to

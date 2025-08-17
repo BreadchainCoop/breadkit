@@ -109,6 +109,25 @@ contract VotingModuleTest is Test {
         votingModule.setRecipientRegistry(address(recipientRegistry));
     }
 
+    // Helper function to create vote signature
+    function createVoteSignature(
+        address voter,
+        uint256 privateKey,
+        uint256[] memory points,
+        uint256 nonce
+    ) internal view returns (bytes memory) {
+        bytes32 domainSeparator = votingModule.DOMAIN_SEPARATOR();
+        bytes32 structHash = keccak256(abi.encode(
+            keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)"),
+            voter,
+            keccak256(abi.encodePacked(points)),
+            nonce
+        ));
+        bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, hash);
+        return abi.encodePacked(r, s, v);
+    }
+
     function testInitialization() public view {
         assertEq(votingModule.maxPoints(), MAX_POINTS);
         assertEq(votingModule.currentCycle(), 1);
@@ -125,8 +144,9 @@ contract VotingModuleTest is Test {
         points[1] = 30;
         points[2] = 20;
 
-        vm.prank(voter1);
-        votingModule.vote(points);
+        uint256 nonce = 1;
+        bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded by checking that the voter has voted
         assertTrue(votingModule.accountLastVoted(voter1) > 0);
@@ -209,9 +229,10 @@ contract VotingModuleTest is Test {
         points1[1] = 30;
         points1[2] = 20;
 
-        // First vote
-        vm.prank(voter1);
-        votingModule.vote(points1);
+        // First vote with signature
+        uint256 nonce1 = 1;
+        bytes memory signature1 = createVoteSignature(voter1, voter1PrivateKey, points1, nonce1);
+        votingModule.castVoteWithSignature(voter1, points1, nonce1, signature1);
 
         // Verify vote was recorded
         assertTrue(votingModule.accountLastVoted(voter1) > 0);
@@ -225,9 +246,11 @@ contract VotingModuleTest is Test {
         points2[1] = 25;
         points2[2] = 15;
 
-        vm.prank(voter1);
+        // Second vote should fail in same cycle
+        uint256 nonce2 = 2;
+        bytes memory signature2 = createVoteSignature(voter1, voter1PrivateKey, points2, nonce2);
         vm.expectRevert(VotingModule.AlreadyVotedInCycle.selector);
-        votingModule.vote(points2);
+        votingModule.castVoteWithSignature(voter1, points2, nonce2, signature2);
     }
 
     function testNonceReplayProtection() public {
@@ -271,7 +294,8 @@ contract VotingModuleTest is Test {
 
     function testZeroVotingPower() public {
         // Create account with no tokens
-        address noTokensVoter = address(0x999);
+        uint256 noTokensVoterPrivateKey = 0x999;
+        address noTokensVoter = vm.addr(noTokensVoterPrivateKey);
 
         uint256[] memory points = new uint256[](3);
         points[0] = 50;
@@ -279,8 +303,9 @@ contract VotingModuleTest is Test {
         points[2] = 20;
 
         // Vote with zero voting power should succeed but have no effect
-        vm.prank(noTokensVoter);
-        votingModule.vote(points);
+        uint256 nonce = 1;
+        bytes memory signature = createVoteSignature(noTokensVoter, noTokensVoterPrivateKey, points, nonce);
+        votingModule.castVoteWithSignature(noTokensVoter, points, nonce, signature);
 
         // Verify vote was recorded but with zero power
         assertTrue(votingModule.accountLastVoted(noTokensVoter) > 0);
@@ -291,9 +316,10 @@ contract VotingModuleTest is Test {
         points[0] = MAX_POINTS + 1; // Exceeds max
         points[1] = 50;
 
-        vm.prank(voter1);
+        uint256 nonce = 1;
+        bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
         vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
-        votingModule.vote(points);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
     function testZeroVotePoints() public {
@@ -302,9 +328,10 @@ contract VotingModuleTest is Test {
         points[1] = 0;
         points[2] = 0;
 
-        vm.prank(voter1);
+        uint256 nonce = 1;
+        bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
         vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
-        votingModule.vote(points);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
     function testValidateSignature() public view {
@@ -343,16 +370,18 @@ contract VotingModuleTest is Test {
         points[1] = 30;
         points[2] = 20;
 
-        vm.prank(voter1);
-        votingModule.vote(points);
+        uint256 nonce1 = 1;
+        bytes memory signature1 = createVoteSignature(voter1, voter1PrivateKey, points, nonce1);
+        votingModule.castVoteWithSignature(voter1, points, nonce1, signature1);
 
         // Start new cycle
         votingModule.startNewCycle();
         assertEq(votingModule.currentCycle(), 2);
 
-        // Vote in cycle 2
-        vm.prank(voter2);
-        votingModule.vote(points);
+        // Vote in cycle 2 with signature
+        uint256 nonce2 = 1;
+        bytes memory signature2 = createVoteSignature(voter2, voter2PrivateKey, points, nonce2);
+        votingModule.castVoteWithSignature(voter2, points, nonce2, signature2);
 
         // Check that votes are recorded in different cycles
         assertTrue(votingModule.accountLastVoted(voter1) > 0);

@@ -159,8 +159,13 @@ contract VotingModuleSimpleTest is Test {
         points[1] = 30;
         points[2] = 20;
 
-        vm.prank(voter1);
-        votingModule.vote(points);
+        // Create signature for voting
+        uint256 nonce = 1;
+        bytes32 digest = _createVoteDigest(voter1, points, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded by checking project distributions
         uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
@@ -221,9 +226,13 @@ contract VotingModuleSimpleTest is Test {
         points[0] = 50;
         points[1] = 50;
 
-        vm.prank(voter1);
+        // Create signature and expect revert
+        uint256 nonce = 1;
+        bytes32 digest = _createVoteDigest(voter1, points, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
         vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
-        votingModule.vote(points);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Try with 4 points (too many)
         uint256[] memory points2 = new uint256[](4);
@@ -232,9 +241,13 @@ contract VotingModuleSimpleTest is Test {
         points2[2] = 25;
         points2[3] = 25;
 
-        vm.prank(voter1);
+        // Create signature for second attempt and expect revert
+        uint256 nonce2 = 2;
+        bytes32 digest2 = _createVoteDigest(voter1, points2, nonce2);
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(voter1PrivateKey, digest2);
+        bytes memory signature2 = abi.encodePacked(r2, s2, v2);
         vm.expectRevert(VotingModule.InvalidPointsDistribution.selector);
-        votingModule.vote(points2);
+        votingModule.castVoteWithSignature(voter1, points2, nonce2, signature2);
     }
 
     function testValidRecipientCount() public {
@@ -244,8 +257,12 @@ contract VotingModuleSimpleTest is Test {
         points[1] = 30;
         points[2] = 20;
 
-        vm.prank(voter1);
-        votingModule.vote(points);
+        // Create signature for voting
+        uint256 nonce = 1;
+        bytes32 digest = _createVoteDigest(voter1, points, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Check vote was recorded by checking project distributions
         uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
@@ -271,8 +288,12 @@ contract VotingModuleSimpleTest is Test {
         points[2] = 25;
         points[3] = 25;
 
-        vm.prank(voter1);
-        votingModule.vote(points);
+        // Create signature for voting with 4 recipients
+        uint256 nonce = 1;
+        bytes32 digest = _createVoteDigest(voter1, points, nonce);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Check vote was recorded with 4 points in project distributions
         uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
