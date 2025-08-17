@@ -76,7 +76,7 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
 
     /// @notice Reference to the recipient registry for validation
     IMockRecipientRegistry public recipientRegistry;
-    
+
     /// @notice Reference to the cycle module for cycle management
     ICycleModule public cycleModule;
 
@@ -237,7 +237,6 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         emit MaxPointsSet(_maxPoints);
     }
 
-
     /// @notice Gets the recipient registry address
     /// @return The address of the recipient registry
     function getRecipientRegistry() external view returns (address) {
@@ -250,7 +249,6 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         if (address(recipientRegistry) == address(0)) revert RecipientRegistryNotSet();
         return recipientRegistry.getActiveRecipientsCount();
     }
-
 
     // ============ Internal Functions ============
 
@@ -306,18 +304,16 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
     /// @param voter Address of the voter
     /// @param points Array of points allocated to each recipient
     /// @param votingPower Total voting power of the voter
-    function _processVote(address voter, uint256[] calldata points, uint256 votingPower)
-        internal
-    {
+    function _processVote(address voter, uint256[] calldata points, uint256 votingPower) internal {
         uint256 currentCycle = cycleModule.getCurrentCycle();
-        
+
         // Check if voter has already voted in this cycle and revert their previous vote
         uint256 previousVotingPower = voterCyclePower[currentCycle][voter];
         if (previousVotingPower > 0) {
             // Revert previous vote's impact on total voting power
             totalCycleVotingPower[currentCycle] -= previousVotingPower;
             currentVotes[currentCycle] -= 1; // Decrement vote count since we're replacing
-            
+
             // Revert previous vote's impact on project distributions
             uint256[] storage previousPoints = voterCyclePoints[currentCycle][voter];
             for (uint256 i = 0; i < previousPoints.length; i++) {
@@ -329,7 +325,7 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         // Apply new vote
         currentVotes[currentCycle] += 1;
         totalCycleVotingPower[currentCycle] += votingPower;
-        
+
         // Store voter's current voting power and points for potential future recasting
         voterCyclePower[currentCycle][voter] = votingPower;
         delete voterCyclePoints[currentCycle][voter]; // Clear previous points array

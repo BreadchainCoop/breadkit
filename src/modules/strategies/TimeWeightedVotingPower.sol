@@ -3,14 +3,14 @@ pragma solidity ^0.8.20;
 
 // TODO: Implement TimeWeightedVotingPower in a future release
 // Issue: https://github.com/BreadchainCoop/breadkit/issues/48
-// 
+//
 // The TimeWeightedVotingPower strategy will calculate voting power based on how long
 // tokens were held during a specific period, encouraging long-term holding and participation.
 // This follows the breadchain pattern for fair distribution.
 //
 // Implementation requirements:
 // - Calculate voting power based on token holding duration
-// - Support configurable time periods for weight calculation  
+// - Support configurable time periods for weight calculation
 // - Integrate with cycle management for proper period tracking
 // - Handle edge cases for mid-period token transfers
 //
