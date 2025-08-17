@@ -97,7 +97,10 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @param admin The address that will have administrative control (limited to emergency functions)
     /// @param initialRecipients Array of addresses that will be the initial voting recipients
     /// @param _proposalExpiry Time limit in seconds for how long proposals remain valid for voting
-    function initialize(address admin, address[] memory initialRecipients, uint256 _proposalExpiry) public initializer {
+    function initialize(address admin, address[] memory initialRecipients, uint256 _proposalExpiry)
+        public
+        initializer
+    {
         __Ownable_init(admin);
 
         if (initialRecipients.length == 0) revert NoRecipients();
@@ -123,10 +126,10 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @param newExpiry The new expiry duration in seconds
     function setProposalExpiry(uint256 newExpiry) external onlyOwner {
         if (newExpiry == 0) revert InvalidProposalExpiry();
-        
+
         uint256 oldExpiry = proposalExpiry;
         proposalExpiry = newExpiry;
-        
+
         emit ProposalExpiryUpdated(oldExpiry, newExpiry);
     }
 
@@ -180,7 +183,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     function _propose(address candidate, bool isAddition) internal returns (uint256 proposalId) {
         // Common validation: only recipients can propose
         if (!isRecipientMapping[msg.sender]) revert NotARecipient();
-        
+
         // Specific validation based on proposal type
         if (isAddition) {
             if (candidate == address(0)) revert InvalidRecipient();
@@ -320,7 +323,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
 
     // TODO: Temporarily commented out pending resolution of issue #43
     // See: https://github.com/BreadchainCoop/breadkit/issues/43
-    
+
     // /// @notice Calculate the number of votes required for a proposal to pass
     // /// @dev Addition proposals require all current recipients to vote (100% consensus)
     // /// @dev Removal proposals require all recipients except the one being removed

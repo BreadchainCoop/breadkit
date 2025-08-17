@@ -113,7 +113,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
         registry.vote(addProposal);
         vm.prank(RECIPIENT_3);
         registry.vote(addProposal);
-        
+
         // Process the queue to actually add the fourth recipient
         registry.processQueue();
 
@@ -136,7 +136,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
         assertTrue(executed);
         assertFalse(registry.isRecipient(address(0x99))); // Not yet processed
         assertTrue(registry.isQueuedForAddition(address(0x99))); // Still in queue
-        
+
         // Process queue to actually add the recipient
         registry.processQueue();
         assertTrue(registry.isRecipient(address(0x99))); // Now added
@@ -167,7 +167,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
         // Should auto-execute proposal with 2 votes (but not process queue)
         (,,, bool executed,) = registry.getProposal(proposalId);
         assertTrue(executed);
-        
+
         // Verify recipient is still active (not yet processed)
         assertTrue(registry.isRecipient(RECIPIENT_3)); // Still active
         assertTrue(registry.isQueuedForRemoval(RECIPIENT_3)); // Queued for removal
@@ -175,7 +175,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
 
         // Process the queue to actually remove the recipient
         registry.processQueue();
-        
+
         // Now verify the recipient is removed
         assertFalse(registry.isRecipient(RECIPIENT_3));
         assertEq(registry.getRecipientCount(), 2);
@@ -312,7 +312,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
 
     function test_SetProposalExpiry() public {
         uint256 newExpiry = 3 days;
-        
+
         vm.prank(ADMIN);
         vm.expectEmit(true, true, false, false);
         emit ProposalExpiryUpdated(7 days, newExpiry);
