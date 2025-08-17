@@ -39,7 +39,7 @@ abstract contract AutomationBase is IDistributionManager {
     /// @notice Executes the distribution
     /// @dev Delegates to DistributionManager for execution
     function executeDistribution() public virtual override {
-        if (!isDistributionReady()) revert NotResolved();
+        if (!distributionManager.isDistributionReady()) revert NotResolved();
 
         distributionManager.executeDistribution();
 
