@@ -29,7 +29,7 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     IDistributionStrategy public baseStrategy;
     address public cycleManager;
     IERC20 public baseToken;
-    
+
     // Storage for managing multiple strategies
     mapping(address => bool) public strategies;
     address[] public strategyList;
@@ -152,50 +152,50 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
     function addStrategy(address strategy) external onlyOwner {
         _addStrategy(strategy);
     }
-    
+
     /// @notice Removes a distribution strategy
     /// @param strategy Address of the strategy to remove
     function removeStrategy(address strategy) external onlyOwner {
         _removeStrategy(strategy);
     }
-    
+
     /// @notice Checks if an address is a registered strategy
     /// @param strategy Address to check
     /// @return True if the address is a registered strategy
     function isStrategy(address strategy) external view returns (bool) {
         return strategies[strategy];
     }
-    
+
     /// @notice Gets all registered strategies
     /// @return Array of strategy addresses
     function getStrategies() external view returns (address[] memory) {
         return strategyList;
     }
-    
+
     /// @dev Internal function to add a strategy
     /// @param strategy Address of the strategy to add
     function _addStrategy(address strategy) internal virtual {
         if (strategy == address(0)) revert ZeroAddress();
         if (strategies[strategy]) revert StrategyAlreadyExists();
-        
+
         strategies[strategy] = true;
         strategyList.push(strategy);
-        
+
         // If no base strategy set, make this the base strategy
         if (address(baseStrategy) == address(0)) {
             baseStrategy = IDistributionStrategy(strategy);
         }
-        
+
         emit StrategyAdded(strategy);
     }
-    
+
     /// @dev Internal function to remove a strategy
     /// @param strategy Address of the strategy to remove
     function _removeStrategy(address strategy) internal virtual {
         if (!strategies[strategy]) revert StrategyNotFound();
-        
+
         strategies[strategy] = false;
-        
+
         // Remove from array
         for (uint256 i = 0; i < strategyList.length; i++) {
             if (strategyList[i] == strategy) {
@@ -204,28 +204,28 @@ abstract contract DistributionManager is Initializable, OwnableUpgradeable {
                 break;
             }
         }
-        
+
         // If this was the base strategy, clear it
         if (address(baseStrategy) == strategy) {
             baseStrategy = IDistributionStrategy(address(0));
         }
-        
+
         emit StrategyRemoved(strategy);
     }
-    
+
     /// @dev Internal function to distribute to a specific strategy
     /// @param strategy Address of the strategy to distribute to
     /// @param amount Amount to distribute
     function _distributeToSpecificStrategy(address strategy, uint256 amount) internal virtual {
         if (!strategies[strategy]) revert StrategyNotFound();
         if (amount == 0) revert InvalidAmount();
-        
+
         // Transfer tokens to strategy
         baseToken.safeTransfer(strategy, amount);
-        
+
         // Trigger distribution in strategy
         IDistributionStrategy(strategy).distribute(amount);
-        
+
         emit YieldDistributed(strategy, amount);
     }
 

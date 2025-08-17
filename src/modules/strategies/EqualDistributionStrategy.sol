@@ -15,11 +15,10 @@ contract EqualDistributionStrategy is BaseDistributionStrategy {
     /// @param _yieldToken Address of the yield token to distribute
     /// @param _recipientRegistry Address of the recipient registry
     /// @param _distributionManager Address of the distribution manager
-    function initialize(
-        address _yieldToken,
-        address _recipientRegistry,
-        address _distributionManager
-    ) external initializer {
+    function initialize(address _yieldToken, address _recipientRegistry, address _distributionManager)
+        external
+        initializer
+    {
         __BaseDistributionStrategy_init(_yieldToken, _recipientRegistry, _distributionManager);
     }
 
