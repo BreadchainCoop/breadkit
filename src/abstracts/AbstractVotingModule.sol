@@ -197,10 +197,10 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
 
     // ============ External Functions ============
 
-    /// @notice Gets the voting power of an account across all strategies
-    /// @dev Aggregates voting power from all configured strategies
+    /// @notice Gets the voting power of an account from the voting strategies
+    /// @dev Queries the configured voting strategies for the account's power
     /// @param account The address to check voting power for
-    /// @return The total voting power of the account
+    /// @return The total voting power from all strategies
     function getVotingPower(address account) external view virtual returns (uint256) {
         return _calculateTotalVotingPower(account);
     }
@@ -275,7 +275,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
         // Mark nonce as used after validation
         usedNonces[voter][nonce] = true;
 
-        // Get total voting power
+        // Get voting power from the voting strategy
         uint256 votingPower = _calculateTotalVotingPower(voter);
 
         // Validate points
@@ -287,13 +287,14 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
         emit VoteCast(voter, points, votingPower, nonce, signature);
     }
 
-    /// @notice Calculates total voting power across all strategies
-    /// @dev Aggregates voting power from all configured strategies
-    /// @param account Address to calculate voting power for
-    /// @return totalPower Combined voting power from all strategies
+    /// @notice Gets voting power directly from the voting strategies
+    /// @dev Queries each configured voting strategy for the account's power
+    /// @param account Address to get voting power for
+    /// @return totalPower Total voting power from all strategies
     function _calculateTotalVotingPower(address account) internal view returns (uint256) {
         uint256 totalPower = 0;
 
+        // Get voting power directly from each voting strategy
         for (uint256 i = 0; i < votingPowerStrategies.length; i++) {
             totalPower += votingPowerStrategies[i].getCurrentVotingPower(account);
         }

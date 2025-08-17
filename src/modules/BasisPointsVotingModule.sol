@@ -208,15 +208,6 @@ contract BasisPointsVotingModule is AbstractVotingModule {
 
     // ============ Admin Functions ============
 
-    /// @notice Emergency function to reset a voter's used nonce
-    /// @dev Only callable by owner in case of emergency. Use with extreme caution.
-    /// @param voter The voter's address
-    /// @param nonce The nonce to reset
-    /// @custom:security Critical function - can enable replay attacks if misused
-    function emergencyResetNonce(address voter, uint256 nonce) external onlyOwner {
-        usedNonces[voter][nonce] = false;
-    }
-
     // Issue #43: Store required votes at proposal creation in VotingRecipientRegistry
     // https://github.com/BreadchainCoop/breadkit/issues/43
     // TODO: Implement when VotingRecipientRegistry is added
