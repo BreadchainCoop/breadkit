@@ -281,4 +281,93 @@ contract DistributionModuleTest is Test {
 
         assertEq(totalDistributed, 1000 ether);
     }
+
+    function testPrecisionValidationMinimumYield() public {
+        // Test that yield must be at least 1 wei per recipient
+        yieldToken.mint(address(distribution), 2); // Only 2 wei for 3 recipients
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute, string memory reason) = distribution.validateDistribution();
+        assertFalse(canDistribute);
+        assertEq(reason, "Insufficient yield precision for accurate distribution");
+    }
+
+    function testPrecisionValidationFixedDistribution() public {
+        // Test that fixed distribution can handle minimum amounts
+        distribution.setYieldFixedSplitDivisor(2); // 50% fixed, 50% voted
+
+        // With default votes [300, 500, 200] and total 1000, we need enough yield
+        // so that smallest vote (200) gets at least 1 wei in voted distribution
+        // For 50% voted: smallest distribution = (200 * votedAmount) / 1000 >= 1
+        // So votedAmount >= 5, and totalYield >= 10
+        yieldToken.mint(address(distribution), 2000); // Plenty for validation
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute,) = distribution.validateDistribution();
+        assertTrue(canDistribute);
+    }
+
+    function testPrecisionValidationSmallVoteShares() public {
+        // Test very small vote share precision
+        uint256[] memory smallVotes = new uint256[](3);
+        smallVotes[0] = 1; // Smallest possible vote
+        smallVotes[1] = 1000; // Much larger vote
+        smallVotes[2] = 999; // Large vote
+        distribution.setVotes(smallVotes);
+
+        // With 2000 total votes and small voted amount, check precision
+        yieldToken.mint(address(distribution), 4000); // Should be enough
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute,) = distribution.validateDistribution();
+        assertTrue(canDistribute);
+    }
+
+    function testPrecisionValidationUnderflowScenario() public {
+        // Create scenario where smallest vote would result in 0 distribution
+        uint256[] memory votes = new uint256[](3);
+        votes[0] = 1; // Extremely small vote
+        votes[1] = 1000000; // Very large vote
+        votes[2] = 1000000; // Very large vote
+        distribution.setVotes(votes);
+
+        // Use minimum yield that would cause underflow in voted distribution
+        yieldToken.mint(address(distribution), 10); // Very small yield
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute, string memory reason) = distribution.validateDistribution();
+        assertFalse(canDistribute);
+        assertEq(reason, "Insufficient yield precision for accurate distribution");
+    }
+
+    function testPrecisionValidationEdgeCase() public {
+        // Test edge case where yield is exactly at the threshold
+        uint256[] memory votes = new uint256[](3);
+        votes[0] = 1;
+        votes[1] = 1;
+        votes[2] = 1;
+        distribution.setVotes(votes);
+
+        // Mint exactly enough yield for minimum distribution
+        yieldToken.mint(address(distribution), 6); // 2 * 3 recipients = 6 (considering 50/50 split)
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute,) = distribution.validateDistribution();
+        assertTrue(canDistribute);
+    }
+
+    function testPrecisionValidationFailsOnTooSmallYield() public {
+        // Test that validation correctly rejects yield amounts that would cause precision issues
+        distribution.setYieldFixedSplitDivisor(2); // 50% fixed, 50% voted
+
+        // With default votes [300, 500, 200] and total 1000, 6 wei total is too small
+        // Fixed: 3 wei, Voted: 3 wei
+        // Smallest vote (200) would get: (200 * 3) / 1000 = 0 wei (precision loss)
+        yieldToken.mint(address(distribution), 6);
+        vm.roll(block.number + CYCLE_LENGTH + 1);
+
+        (bool canDistribute, string memory reason) = distribution.validateDistribution();
+        assertFalse(canDistribute);
+        assertEq(reason, "Insufficient yield precision for accurate distribution");
+    }
 }
