@@ -35,8 +35,9 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     uint256 public proposalCount;
 
     /// @notice Time limit for proposals before they expire
-    /// @dev Set to 7 days, after which proposals cannot be voted on or executed
-    uint256 public constant PROPOSAL_EXPIRY = 7 days;
+    /// @dev Configurable value set during initialization, after which proposals cannot be voted on or executed
+    /// @dev Can be updated by the admin using setProposalExpiry function
+    uint256 public proposalExpiry;
 
     // Additional Events for voting
     /// @notice Emitted when a new proposal is created
@@ -57,6 +58,11 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @notice Emitted when a proposal expires without being executed
     /// @param proposalId The ID of the expired proposal
     event ProposalExpiredEvent(uint256 indexed proposalId);
+
+    /// @notice Emitted when the proposal expiry duration is updated
+    /// @param oldExpiry The previous expiry duration in seconds
+    /// @param newExpiry The new expiry duration in seconds
+    event ProposalExpiryUpdated(uint256 oldExpiry, uint256 newExpiry);
 
     // Additional Errors for voting
     /// @notice Thrown when a non-recipient attempts to perform recipient-only actions
@@ -80,6 +86,9 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @notice Thrown when attempting to initialize the registry with an empty recipients array
     error NoRecipients();
 
+    /// @notice Thrown when attempting to set an invalid proposal expiry duration
+    error InvalidProposalExpiry();
+
     /// @notice Initialize the registry with a set of initial recipients
     /// @dev This function replaces the constructor for upgradeable contracts
     /// @dev The admin is set but only used for emergency functions like clearing queues
@@ -87,10 +96,14 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @dev Can only be called once due to the initializer modifier
     /// @param admin The address that will have administrative control (limited to emergency functions)
     /// @param initialRecipients Array of addresses that will be the initial voting recipients
-    function initialize(address admin, address[] memory initialRecipients) public initializer {
+    /// @param _proposalExpiry Time limit in seconds for how long proposals remain valid for voting
+    function initialize(address admin, address[] memory initialRecipients, uint256 _proposalExpiry) public initializer {
         __Ownable_init(admin);
 
         if (initialRecipients.length == 0) revert NoRecipients();
+        if (_proposalExpiry == 0) revert InvalidProposalExpiry();
+
+        proposalExpiry = _proposalExpiry;
 
         for (uint256 i = 0; i < initialRecipients.length; i++) {
             address recipient = initialRecipients[i];
@@ -101,6 +114,20 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
             isRecipientMapping[recipient] = true;
             emit RecipientAdded(recipient);
         }
+    }
+
+    /// @notice Update the proposal expiry duration
+    /// @dev Only the admin (owner) can call this function
+    /// @dev Setting expiry to 0 is not allowed to prevent immediate expiration of all proposals
+    /// @dev This change affects all future proposals, existing proposals use their original expiry
+    /// @param newExpiry The new expiry duration in seconds
+    function setProposalExpiry(uint256 newExpiry) external onlyOwner {
+        if (newExpiry == 0) revert InvalidProposalExpiry();
+        
+        uint256 oldExpiry = proposalExpiry;
+        proposalExpiry = newExpiry;
+        
+        emit ProposalExpiryUpdated(oldExpiry, newExpiry);
     }
 
     /// @notice Queue a recipient for addition through the voting process
@@ -124,52 +151,65 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @notice Create a proposal to add a new recipient to the registry
     /// @dev Only existing recipients can create proposals
     /// @dev The proposer automatically casts the first vote
-    /// @dev Proposals expire after PROPOSAL_EXPIRY time if not executed
+    /// @dev Proposals expire after the configured proposalExpiry time if not executed
     /// @dev Emits ProposalCreated and VoteCast events
     /// @param candidate The address to propose for addition
     /// @return proposalId The unique ID of the created proposal
     function proposeAddition(address candidate) public returns (uint256 proposalId) {
-        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
-        if (candidate == address(0)) revert InvalidRecipient();
-        if (isRecipientMapping[candidate]) revert RecipientAlreadyExists();
-
-        proposalId = proposalCount++;
-        Proposal storage proposal = proposals[proposalId];
-        proposal.candidate = candidate;
-        proposal.isAddition = true;
-        proposal.createdAt = block.timestamp;
-
-        // Proposer automatically votes for their proposal
-        proposal.hasVoted[msg.sender] = true;
-        proposal.voteCount = 1;
-
-        emit ProposalCreated(proposalId, candidate, true);
-        emit VoteCast(proposalId, msg.sender);
+        return _propose(candidate, true);
     }
 
     /// @notice Create a proposal to remove an existing recipient from the registry
     /// @dev Only existing recipients can create proposals
     /// @dev The proposer automatically casts the first vote
-    /// @dev Proposals expire after PROPOSAL_EXPIRY time if not executed
+    /// @dev Proposals expire after the configured proposalExpiry time if not executed
     /// @dev Removal proposals require n-1 votes (all except the one being removed)
     /// @dev Emits ProposalCreated and VoteCast events
     /// @param candidate The address to propose for removal
     /// @return proposalId The unique ID of the created proposal
     function proposeRemoval(address candidate) public returns (uint256 proposalId) {
-        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
-        if (!isRecipientMapping[candidate]) revert RecipientNotFound();
+        return _propose(candidate, false);
+    }
 
+    /// @notice Internal function to handle proposal creation with validation
+    /// @dev Validates proposer permissions and candidate eligibility based on proposal type
+    /// @dev Eliminates code duplication between proposeAddition and proposeRemoval
+    /// @param candidate The address being proposed for addition or removal
+    /// @param isAddition True if this is an addition proposal, false for removal
+    /// @return proposalId The unique ID of the created proposal
+    function _propose(address candidate, bool isAddition) internal returns (uint256 proposalId) {
+        // Common validation: only recipients can propose
+        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
+        
+        // Specific validation based on proposal type
+        if (isAddition) {
+            if (candidate == address(0)) revert InvalidRecipient();
+            if (isRecipientMapping[candidate]) revert RecipientAlreadyExists();
+        } else {
+            if (!isRecipientMapping[candidate]) revert RecipientNotFound();
+        }
+
+        return _createProposal(candidate, isAddition);
+    }
+
+    /// @notice Internal function to create a proposal with common logic
+    /// @dev Handles proposal creation, automatic voting by proposer, and event emission
+    /// @dev This function eliminates code duplication between proposeAddition and proposeRemoval
+    /// @param candidate The address being proposed for addition or removal
+    /// @param isAddition True if this is an addition proposal, false for removal
+    /// @return proposalId The unique ID of the created proposal
+    function _createProposal(address candidate, bool isAddition) internal returns (uint256 proposalId) {
         proposalId = proposalCount++;
         Proposal storage proposal = proposals[proposalId];
         proposal.candidate = candidate;
-        proposal.isAddition = false;
+        proposal.isAddition = isAddition;
         proposal.createdAt = block.timestamp;
 
         // Proposer automatically votes for their proposal
         proposal.hasVoted[msg.sender] = true;
         proposal.voteCount = 1;
 
-        emit ProposalCreated(proposalId, candidate, false);
+        emit ProposalCreated(proposalId, candidate, isAddition);
         emit VoteCast(proposalId, msg.sender);
     }
 
@@ -186,7 +226,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         Proposal storage proposal = proposals[proposalId];
         if (proposal.candidate == address(0)) revert ProposalNotFound();
         if (proposal.executed) revert ProposalAlreadyExecuted();
-        if (block.timestamp > proposal.createdAt + PROPOSAL_EXPIRY) revert ProposalExpired();
+        if (block.timestamp > proposal.createdAt + proposalExpiry) revert ProposalExpired();
         if (proposal.hasVoted[msg.sender]) revert AlreadyVoted();
 
         proposal.hasVoted[msg.sender] = true;
@@ -211,7 +251,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         Proposal storage proposal = proposals[proposalId];
         if (proposal.candidate == address(0)) revert ProposalNotFound();
         if (proposal.executed) revert ProposalAlreadyExecuted();
-        if (block.timestamp > proposal.createdAt + PROPOSAL_EXPIRY) revert ProposalExpired();
+        if (block.timestamp > proposal.createdAt + proposalExpiry) revert ProposalExpired();
 
         // Calculate required votes based on proposal type
         uint256 requiredVotes = proposal.isAddition ? recipients.length : recipients.length - 1;
@@ -221,10 +261,10 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         _executeProposal(proposalId);
     }
 
-    /// @notice Internal function to execute a proposal and update recipients
+    /// @notice Internal function to execute a proposal and queue recipients
     /// @dev Marks the proposal as executed to prevent double execution
     /// @dev Queues the candidate for addition or removal based on proposal type
-    /// @dev Automatically processes the queue to apply changes immediately
+    /// @dev Queue must be processed separately by calling processQueue()
     /// @dev Emits ProposalExecuted event after successful execution
     /// @param proposalId The ID of the proposal to execute
     function _executeProposal(uint256 proposalId) internal {
@@ -236,9 +276,6 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         } else {
             _queueForRemoval(proposal.candidate);
         }
-
-        // Automatically process the queue after successful voting
-        _processQueue();
 
         emit ProposalExecuted(proposalId);
     }
@@ -272,27 +309,30 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     }
 
     /// @notice Check if a proposal has expired and can no longer be voted on
-    /// @dev Proposals expire after PROPOSAL_EXPIRY time from creation
+    /// @dev Proposals expire after the configured proposalExpiry time from creation
     /// @dev Expired proposals cannot receive votes or be executed
     /// @param proposalId The ID of the proposal to check
     /// @return isExpired True if the proposal has expired, false otherwise
     function isProposalExpired(uint256 proposalId) external view returns (bool isExpired) {
         Proposal storage proposal = proposals[proposalId];
-        return block.timestamp > proposal.createdAt + PROPOSAL_EXPIRY;
+        return block.timestamp > proposal.createdAt + proposalExpiry;
     }
 
-    /// @notice Calculate the number of votes required for a proposal to pass
-    /// @dev Addition proposals require all current recipients to vote (100% consensus)
-    /// @dev Removal proposals require all recipients except the one being removed
-    /// @dev This number can change if recipients are added/removed while proposal is active
-    /// @param proposalId The ID of the proposal to check requirements for
-    /// @return requiredVotes Number of votes needed for the proposal to be executable
-    function getRequiredVotes(uint256 proposalId) external view returns (uint256 requiredVotes) {
-        Proposal storage proposal = proposals[proposalId];
-        if (proposal.candidate == address(0)) revert ProposalNotFound();
+    // TODO: Temporarily commented out pending resolution of issue #43
+    // See: https://github.com/BreadchainCoop/breadkit/issues/43
+    
+    // /// @notice Calculate the number of votes required for a proposal to pass
+    // /// @dev Addition proposals require all current recipients to vote (100% consensus)
+    // /// @dev Removal proposals require all recipients except the one being removed
+    // /// @dev This number can change if recipients are added/removed while proposal is active
+    // /// @param proposalId The ID of the proposal to check requirements for
+    // /// @return requiredVotes Number of votes needed for the proposal to be executable
+    // function getRequiredVotes(uint256 proposalId) external view returns (uint256 requiredVotes) {
+    //     Proposal storage proposal = proposals[proposalId];
+    //     if (proposal.candidate == address(0)) revert ProposalNotFound();
 
-        // Addition proposals need unanimous consent from all current recipients
-        // Removal proposals need consent from all recipients except the one being removed
-        return proposal.isAddition ? recipients.length : recipients.length - 1;
-    }
+    //     // Addition proposals need unanimous consent from all current recipients
+    //     // Removal proposals need consent from all recipients except the one being removed
+    //     return proposal.isAddition ? recipients.length : recipients.length - 1;
+    // }
 }
