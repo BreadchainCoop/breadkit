@@ -2,12 +2,13 @@
 pragma solidity ^0.8.20;
 
 import "./AutomationBase.sol";
-import "../../interfaces/IAutomationCompatible.sol";
+import {AutomationCompatibleInterface} from
+    "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 
 /// @title ChainlinkAutomation
 /// @notice Chainlink Keeper compatible automation implementation
 /// @dev Implements Chainlink automation interface for yield distribution
-contract ChainlinkAutomation is AutomationBase, IAutomationCompatible {
+contract ChainlinkAutomation is AutomationBase, AutomationCompatibleInterface {
     constructor(address _distributionManager) AutomationBase(_distributionManager) {}
 
     /// @notice Chainlink-compatible upkeep check
@@ -17,7 +18,6 @@ contract ChainlinkAutomation is AutomationBase, IAutomationCompatible {
     /// @return performData The data to pass to performUpkeep
     function checkUpkeep(bytes calldata checkData)
         external
-        view
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
