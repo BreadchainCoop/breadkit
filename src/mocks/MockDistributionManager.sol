@@ -69,7 +69,7 @@ contract MockDistributionManager is IDistributionManager {
         currentCycleNumber++;
 
         // Call distribution module to handle the actual distribution
-        distributionModule.distribute();
+        distributionModule.distributeYield();
 
         // Emit event
         emit DistributionExecuted(block.number, availableYield, currentVotes);

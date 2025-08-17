@@ -9,22 +9,51 @@ import "../../src/interfaces/IDistributionModule.sol";
 
 contract MockDistributionModule is IDistributionModule {
     uint256 public distributeCallCount;
+    bool public isPaused;
 
-    function distribute() external {
+    function distributeYield() external {
         distributeCallCount++;
     }
 
-    function getCurrentDistribution() external pure returns (uint256[] memory) {
-        uint256[] memory dist = new uint256[](3);
-        dist[0] = 40;
-        dist[1] = 35;
-        dist[2] = 25;
-        return dist;
+    function getCurrentDistributionState() external view returns (DistributionState memory state) {
+        address[] memory recipients = new address[](3);
+        uint256[] memory votedDist = new uint256[](3);
+        uint256[] memory fixedDist = new uint256[](3);
+
+        votedDist[0] = 40;
+        votedDist[1] = 35;
+        votedDist[2] = 25;
+
+        state = DistributionState({
+            totalYield: 100,
+            fixedAmount: 20,
+            votedAmount: 80,
+            totalVotes: 100,
+            lastDistributionBlock: block.number - 100,
+            cycleNumber: 1,
+            recipients: recipients,
+            votedDistributions: votedDist,
+            fixedDistributions: fixedDist
+        });
+    }
+
+    function validateDistribution() external view returns (bool canDistribute, string memory reason) {
+        if (isPaused) {
+            return (false, "System is paused");
+        }
+        return (true, "");
+    }
+
+    function emergencyPause() external {
+        isPaused = true;
+    }
+
+    function emergencyResume() external {
+        isPaused = false;
     }
 
     function setCycleLength(uint256) external {}
     function setYieldFixedSplitDivisor(uint256) external {}
-    function setAMMVotingPower(address) external {}
 }
 
 contract AutomationBaseTest is Test {
