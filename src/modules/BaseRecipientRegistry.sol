@@ -2,11 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "../interfaces/IRecipientRegistry.sol";
 
 /// @title BaseRecipientRegistry
 /// @notice Abstract base contract for managing yield recipients with queued changes
 /// @dev Provides common queue management functionality for recipient registries
-abstract contract BaseRecipientRegistry is OwnableUpgradeable {
+abstract contract BaseRecipientRegistry is IRecipientRegistry, OwnableUpgradeable {
     /// @notice Array of active recipient addresses
     /// @dev This array contains all currently active recipients who can receive yield
     address[] public recipients;
@@ -21,39 +22,9 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
 
     /// @notice Mapping to quickly check if an address is an active recipient
     /// @dev Maps recipient address to true if active, false otherwise
-    mapping(address => bool) public isRecipient;
+    mapping(address => bool) public isRecipientMapping;
 
-    // Events
-    /// @notice Emitted when a recipient is successfully added to the registry
-    /// @param recipient The address of the newly added recipient
-    event RecipientAdded(address indexed recipient);
-
-    /// @notice Emitted when a recipient is successfully removed from the registry
-    /// @param recipient The address of the removed recipient
-    event RecipientRemoved(address indexed recipient);
-
-    /// @notice Emitted when a recipient is queued for addition or removal
-    /// @param recipient The address being queued
-    /// @param isAddition True if queued for addition, false for removal
-    event RecipientQueued(address indexed recipient, bool isAddition);
-
-    /// @notice Emitted when the queue is processed and recipients are updated
-    /// @param added Number of recipients added
-    /// @param removed Number of recipients removed
-    event QueueProcessed(uint256 added, uint256 removed);
-
-    // Errors
-    /// @notice Thrown when attempting to add the zero address as a recipient
-    error InvalidRecipient();
-
-    /// @notice Thrown when attempting to add a recipient that already exists in the registry
-    error RecipientAlreadyExists();
-
-    /// @notice Thrown when attempting to remove a recipient that doesn't exist in the registry
-    error RecipientNotFound();
-
-    /// @notice Thrown when attempting to queue a recipient that is already queued
-    error RecipientAlreadyQueued();
+    // Events and errors are inherited from IRecipientRegistry interface
 
     /// @notice Internal function to queue a recipient for addition
     /// @param recipient Address to add to the queue
@@ -63,7 +34,7 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     /// @dev Access control should be implemented in the calling public function
     function _queueForAddition(address recipient) internal {
         if (recipient == address(0)) revert InvalidRecipient();
-        if (isRecipient[recipient]) revert RecipientAlreadyExists();
+        if (isRecipientMapping[recipient]) revert RecipientAlreadyExists();
 
         // Check if already queued to prevent duplicates
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
@@ -83,7 +54,7 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
     /// @dev Emits RecipientQueued event with isAddition=false
     /// @dev Access control should be implemented in the calling public function
     function _queueForRemoval(address recipient) internal {
-        if (!isRecipient[recipient]) revert RecipientNotFound();
+        if (!isRecipientMapping[recipient]) revert RecipientNotFound();
 
         // Check if already queued for removal to prevent duplicates
         for (uint256 i = 0; i < queuedRecipientsForRemoval.length; i++) {
@@ -114,7 +85,7 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         for (uint256 i = 0; i < queuedRecipientsForAddition.length; i++) {
             address recipient = queuedRecipientsForAddition[i];
             recipients.push(recipient);
-            isRecipient[recipient] = true;
+            isRecipientMapping[recipient] = true;
             emit RecipientAdded(recipient);
         }
 
@@ -131,7 +102,7 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
                 for (uint256 j = 0; j < queuedRecipientsForRemoval.length; j++) {
                     if (recipient == queuedRecipientsForRemoval[j]) {
                         shouldRemove = true;
-                        isRecipient[recipient] = false;
+                        isRecipientMapping[recipient] = false;
                         removedCount++;
                         emit RecipientRemoved(recipient);
                         break;
@@ -217,4 +188,13 @@ abstract contract BaseRecipientRegistry is OwnableUpgradeable {
         }
         return false;
     }
+
+    /// @notice Check if an address is currently an active recipient
+    /// @dev Required by IRecipientRegistry interface - wraps the mapping access
+    /// @param recipient The address to check
+    /// @return isActive True if the address is an active recipient, false otherwise
+    function isRecipient(address recipient) external view returns (bool isActive) {
+        return isRecipientMapping[recipient];
+    }
+
 }

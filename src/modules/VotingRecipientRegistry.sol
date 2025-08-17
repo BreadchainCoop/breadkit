@@ -95,10 +95,10 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
         for (uint256 i = 0; i < initialRecipients.length; i++) {
             address recipient = initialRecipients[i];
             if (recipient == address(0)) revert InvalidRecipient();
-            if (isRecipient[recipient]) revert RecipientAlreadyExists();
+            if (isRecipientMapping[recipient]) revert RecipientAlreadyExists();
 
             recipients.push(recipient);
-            isRecipient[recipient] = true;
+            isRecipientMapping[recipient] = true;
             emit RecipientAdded(recipient);
         }
     }
@@ -129,9 +129,9 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @param candidate The address to propose for addition
     /// @return proposalId The unique ID of the created proposal
     function proposeAddition(address candidate) public returns (uint256 proposalId) {
-        if (!isRecipient[msg.sender]) revert NotARecipient();
+        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
         if (candidate == address(0)) revert InvalidRecipient();
-        if (isRecipient[candidate]) revert RecipientAlreadyExists();
+        if (isRecipientMapping[candidate]) revert RecipientAlreadyExists();
 
         proposalId = proposalCount++;
         Proposal storage proposal = proposals[proposalId];
@@ -156,8 +156,8 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @param candidate The address to propose for removal
     /// @return proposalId The unique ID of the created proposal
     function proposeRemoval(address candidate) public returns (uint256 proposalId) {
-        if (!isRecipient[msg.sender]) revert NotARecipient();
-        if (!isRecipient[candidate]) revert RecipientNotFound();
+        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
+        if (!isRecipientMapping[candidate]) revert RecipientNotFound();
 
         proposalId = proposalCount++;
         Proposal storage proposal = proposals[proposalId];
@@ -181,7 +181,7 @@ contract VotingRecipientRegistry is BaseRecipientRegistry {
     /// @dev Emits VoteCast event and potentially ProposalExecuted if threshold reached
     /// @param proposalId The ID of the proposal to vote on
     function vote(uint256 proposalId) external {
-        if (!isRecipient[msg.sender]) revert NotARecipient();
+        if (!isRecipientMapping[msg.sender]) revert NotARecipient();
 
         Proposal storage proposal = proposals[proposalId];
         if (proposal.candidate == address(0)) revert ProposalNotFound();
