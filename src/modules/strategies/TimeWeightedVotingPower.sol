@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 // TODO: Implement TimeWeightedVotingPower in a future release
-// Issue: https://github.com/BreadchainCoop/breadkit/issues/[TBD]
+// Issue: https://github.com/BreadchainCoop/breadkit/issues/48
 // 
 // The TimeWeightedVotingPower strategy will calculate voting power based on how long
 // tokens were held during a specific period, encouraging long-term holding and participation.
