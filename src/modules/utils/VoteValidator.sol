@@ -8,19 +8,19 @@ pragma solidity ^0.8.20;
 ///      All functions are stateless and can be used by any contract needing vote validation.
 contract VoteValidator {
     // ============ Errors ============
-    
+
     /// @notice Thrown when points distribution is invalid
     error InvalidPointsDistribution();
-    
+
     /// @notice Thrown when points exceed maximum allowed
     error ExceedsMaxPoints();
-    
+
     /// @notice Thrown when total vote points are zero
     error ZeroVotePoints();
-    
+
     /// @notice Thrown when nonce is invalid
     error InvalidNonce();
-    
+
     /// @notice Thrown when nonce has already been used
     error NonceAlreadyUsed();
 

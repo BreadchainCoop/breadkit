@@ -16,32 +16,32 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
     using Checkpoints for Checkpoints.Trace208;
 
     // ============ Errors ============
-    
+
     /// @notice Thrown when attempting to initialize with zero address token
     error InvalidToken();
-    
+
     /// @notice Thrown when start block is not before end block
     error StartMustBeBeforeEnd();
-    
+
     /// @notice Thrown when end block is in the future
     error EndAfterCurrentBlock();
 
     // ============ Immutable Storage ============
-    
+
     /// @notice The ERC20Votes token used for voting power calculation
     /// @dev Must implement the IVotes interface from OpenZeppelin
     IVotes public immutable votingToken;
-    
+
     // ============ State Variables ============
-    
+
     /// @notice Block number when the previous voting cycle started
     uint256 public previousCycleStart;
-    
+
     /// @notice Block number when yield was last claimed
     uint256 public lastClaimedBlock;
 
     // ============ Events ============
-    
+
     /// @notice Emitted when cycle bounds are updated
     /// @param previousCycleStart New previous cycle start block
     /// @param lastClaimedBlock New last claimed block

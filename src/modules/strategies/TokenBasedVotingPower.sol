@@ -12,12 +12,12 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 ///      Users must delegate to themselves or another address to have voting power.
 contract TokenBasedVotingPower is IVotingPowerStrategy {
     // ============ Errors ============
-    
+
     /// @notice Thrown when attempting to initialize with zero address token
     error InvalidToken();
 
     // ============ Immutable Storage ============
-    
+
     /// @notice The ERC20Votes token used for voting power calculation
     /// @dev Must implement the IVotes interface from OpenZeppelin
     IVotes public immutable votingToken;

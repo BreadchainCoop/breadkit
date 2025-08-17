@@ -20,10 +20,10 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     using ECDSA for bytes32;
 
     // ============ Constants ============
-    
+
     /// @notice Precision factor for calculations to prevent rounding errors
     uint256 public constant PRECISION = 1e18;
-    
+
     /// @notice Maximum number of votes that can be submitted in a single batch
     uint256 public constant MAX_BATCH_SIZE = 100;
 
@@ -31,13 +31,13 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     bytes32 public constant VOTE_TYPEHASH = keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)");
 
     // ============ State Variables ============
-    
+
     /// @notice Maximum points that can be allocated to a single recipient
     uint256 public maxPoints;
-    
+
     /// @notice Current voting cycle number
     uint256 public currentCycle;
-    
+
     /// @notice Block number when the current cycle started
     uint256 public lastCycleStart;
 
@@ -45,32 +45,32 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
     IVotingPowerStrategy[] public votingPowerStrategies;
 
     // ============ Mappings ============
-    
+
     /// @notice Tracks used nonces for each voter to prevent replay attacks
     /// @dev voter => nonce => used
     mapping(address => mapping(uint256 => bool)) public usedNonces;
-    
+
     /// @notice Block number when an account last voted
     /// @dev voter => block number
     mapping(address => uint256) public accountLastVoted;
-    
+
     /// @notice Vote distribution across projects for each cycle
     /// @dev cycle => array of weighted votes per project
     mapping(uint256 => uint256[]) public projectDistributions;
-    
+
     /// @notice Total voting power used in each cycle
     /// @dev cycle => total voting power
     mapping(uint256 => uint256) public cycleVotingPower;
-    
+
     /// @notice Current vote count for each cycle
     /// @dev cycle => vote count
     mapping(uint256 => uint256) public currentVotes;
 
     // ============ External References ============
-    
+
     /// @notice Reference to the distribution module for yield allocation
     IDistributionModule public distributionModule;
-    
+
     /// @notice Reference to the recipient registry for validation
     IMockRecipientRegistry public recipientRegistry;
 
