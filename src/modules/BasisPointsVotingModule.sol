@@ -13,45 +13,44 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///      using signature-based voting for gas efficiency and better UX.
 /// @custom:security-contact security@breadchain.xyz
 contract BasisPointsVotingModule is AbstractVotingModule {
-    
     function getVotingPower(address account) external view override returns (uint256) {
         return _calculateTotalVotingPower(account);
     }
-    
+
     function getCurrentVotingDistribution() external view override returns (uint256[] memory) {
         uint256 currentCycle = cycleModule.getCurrentCycle();
         return projectDistributions[currentCycle];
     }
-    
+
     function DOMAIN_SEPARATOR() external view override returns (bytes32) {
         return _domainSeparatorV4();
     }
-    
+
     function isNonceUsed(address voter, uint256 nonce) external view override returns (bool) {
         return usedNonces[voter][nonce];
     }
-    
+
     function getVotingPowerStrategies() external view override returns (IVotingPowerStrategy[] memory) {
         return votingPowerStrategies;
     }
-    
+
     function setMaxPoints(uint256 _maxPoints) external override onlyOwner {
         maxPoints = _maxPoints;
         emit MaxPointsSet(_maxPoints);
     }
-    
-    function validateSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) public view override returns (bool) {
+
+    function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        public
+        view
+        override
+        returns (bool)
+    {
         bytes32 structHash = keccak256(abi.encode(VOTE_TYPEHASH, voter, keccak256(abi.encodePacked(points)), nonce));
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, signature);
         return signer == voter && !usedNonces[voter][nonce];
     }
-    
+
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         return _validateVotePoints(points);
     }
@@ -94,12 +93,9 @@ contract BasisPointsVotingModule is AbstractVotingModule {
     /// @param points Array of basis points to allocate to each recipient (must sum to <= maxPoints per recipient)
     /// @param nonce Unique nonce for this vote to prevent replay attacks
     /// @param signature EIP-712 signature authorizing this vote
-    function castVoteWithSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) external {
+    function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        external
+    {
         _castSingleVote(voter, points, nonce, signature);
     }
 
