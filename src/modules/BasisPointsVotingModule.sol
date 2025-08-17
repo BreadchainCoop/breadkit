@@ -12,6 +12,12 @@ import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 ///      using signature-based voting for gas efficiency and better UX.
 /// @custom:security-contact security@breadchain.xyz
 contract BasisPointsVotingModule is AbstractVotingModule {
+    // ============ Storage Variables ============
+
+    /// @notice Maximum points that can be allocated to a single recipient
+    /// @dev Configurable per implementation to control vote distribution
+    uint256 public maxPoints;
+
     // ============ Constructor ============
 
     /// @notice Creates a new BasisPointsVotingModule instance
@@ -38,7 +44,8 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         address _recipientRegistry,
         address _cycleModule
     ) external initializer {
-        __AbstractVotingModule_init(_maxPoints, _strategies, _distributionModule, _recipientRegistry, _cycleModule);
+        maxPoints = _maxPoints;
+        __AbstractVotingModule_init(_strategies, _distributionModule, _recipientRegistry, _cycleModule);
     }
 
     // ============ External Functions ============
@@ -88,6 +95,36 @@ contract BasisPointsVotingModule is AbstractVotingModule {
     }
 
     // ============ Admin Functions ============
+
+    /// @notice Sets the maximum points that can be allocated per recipient
+    /// @dev Only callable by owner
+    /// @param _maxPoints The new maximum points value
+    function setMaxPoints(uint256 _maxPoints) external onlyOwner {
+        maxPoints = _maxPoints;
+        emit MaxPointsSet(_maxPoints);
+    }
+
+    // ============ Internal Functions ============
+
+    /// @notice Validates vote points distribution
+    /// @dev Checks if points array is valid according to basis points rules
+    /// @param points Array of points to validate
+    /// @return True if points are valid, false otherwise
+    function _validateVotePoints(uint256[] calldata points) internal view override returns (bool) {
+        if (points.length == 0) return false;
+
+        // Validate array length against recipient registry
+        uint256 recipientCount = recipientRegistry.getActiveRecipientsCount();
+        if (points.length != recipientCount) return false;
+
+        uint256 totalPoints;
+        for (uint256 i = 0; i < points.length; i++) {
+            if (points[i] > maxPoints) return false;
+            totalPoints += points[i];
+        }
+
+        return totalPoints > 0;
+    }
 
     // Issue #43: Store required votes at proposal creation in VotingRecipientRegistry
     // https://github.com/BreadchainCoop/breadkit/issues/43

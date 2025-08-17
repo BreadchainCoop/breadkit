@@ -36,10 +36,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
 
     // ============ Storage Variables ============
 
-    /// @notice Maximum points that can be allocated to a single recipient
-    /// @dev Configurable per implementation to control vote distribution
-    uint256 public maxPoints;
-
     /// @notice Array of voting power calculation strategies
     /// @dev Multiple strategies can be used to calculate combined voting power
     IVotingPowerStrategy[] public votingPowerStrategies;
@@ -91,13 +87,11 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @notice Initializes the abstract voting module
     /// @dev Sets up EIP-712 domain, ownership, and core parameters.
     ///      Must be called by inheriting contract's initializer.
-    /// @param _maxPoints Maximum points that can be allocated per recipient
     /// @param _strategies Array of voting power strategy contracts
     /// @param _distributionModule Address of the distribution module
     /// @param _recipientRegistry Address of the recipient registry
     /// @param _cycleModule Address of the cycle module
     function __AbstractVotingModule_init(
-        uint256 _maxPoints,
         IVotingPowerStrategy[] calldata _strategies,
         address _distributionModule,
         address _recipientRegistry,
@@ -108,7 +102,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
         __EIP712_init("BreadKit Voting", "1");
         __Ownable_init(msg.sender);
 
-        maxPoints = _maxPoints;
         distributionModule = IDistributionModule(_distributionModule);
         recipientRegistry = IMockRecipientRegistry(_recipientRegistry);
         cycleModule = ICycleModule(_cycleModule);
@@ -163,14 +156,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @return Array of voting power strategy contracts
     function getVotingPowerStrategies() external view virtual returns (IVotingPowerStrategy[] memory) {
         return votingPowerStrategies;
-    }
-
-    /// @notice Sets the maximum points that can be allocated per recipient
-    /// @dev Only callable by owner
-    /// @param _maxPoints The new maximum points value
-    function setMaxPoints(uint256 _maxPoints) external virtual onlyOwner {
-        maxPoints = _maxPoints;
-        emit MaxPointsSet(_maxPoints);
     }
 
     /// @notice Gets the expected number of vote points based on active recipients
@@ -351,21 +336,8 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @dev Checks if points array is valid according to module rules
     /// @param points Array of points to validate
     /// @return True if points are valid, false otherwise
-    function _validateVotePoints(uint256[] calldata points) internal view virtual returns (bool) {
-        if (points.length == 0) return false;
-
-        // Validate array length against recipient registry
-        uint256 recipientCount = recipientRegistry.getActiveRecipientsCount();
-        if (points.length != recipientCount) return false;
-
-        uint256 totalPoints;
-        for (uint256 i = 0; i < points.length; i++) {
-            if (points[i] > maxPoints) return false;
-            totalPoints += points[i];
-        }
-
-        return totalPoints > 0;
-    }
+    function _validateVotePoints(uint256[] calldata points) internal view virtual returns (bool);
+    // Note: This is now an abstract function that must be implemented by concrete modules
 
     /// @notice Validates a vote signature
     /// @dev Verifies that a signature is valid for the given vote parameters
