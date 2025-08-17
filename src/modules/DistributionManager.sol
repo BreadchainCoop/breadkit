@@ -488,6 +488,10 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         }
     }
 
+    // TODO: Check if the amount of yield in wei representation is more than the array length of the recipients
+    // And also that the yield amount per recipient can be divided in 1e18 representation of voting power distribution
+    // can divide without an underflow.
+
     // /// @notice Validates that the yield amount provides sufficient precision for distribution
     // /// @param availableYield Total available yield
     // /// @param votes Array of votes per recipient
