@@ -127,7 +127,7 @@ contract VotingRecipientRegistryTest is TestWrapper {
         vm.prank(RECIPIENT_3);
         registry.vote(proposalId);
 
-        // The 4th vote should auto-execute the proposal (but not process queue)
+        // The 3rd vote should auto-execute the proposal (but not process queue)
         vm.prank(NEW_RECIPIENT);
         registry.vote(proposalId);
 
