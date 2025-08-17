@@ -121,7 +121,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
 
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
-        bool hasVotedInCycle = accountLastVoted[msg.sender] > lastCycleStart;
+        bool hasVotedInCycle = accountLastVoted[msg.sender] >= lastCycleStart;
         _processVote(msg.sender, points, votingPower, hasVotedInCycle);
     }
 
@@ -272,7 +272,7 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
         // Process vote
-        bool hasVotedInCycle = accountLastVoted[voter] > lastCycleStart;
+        bool hasVotedInCycle = accountLastVoted[voter] >= lastCycleStart;
         _processVote(voter, points, votingPower, hasVotedInCycle);
 
         emit VoteCastWithSignature(voter, points, votingPower, nonce);

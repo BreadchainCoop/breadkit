@@ -5,13 +5,13 @@ import {Test, console} from "forge-std/Test.sol";
 import {VotingModule} from "../src/modules/VotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
-import {IBreadKitToken} from "../src/interfaces/IBreadKitToken.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IMockRecipientRegistry} from "../src/interfaces/IMockRecipientRegistry.sol";
 import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Simple mock token for testing (non-upgradeable)
-contract MockToken is IBreadKitToken {
+contract MockToken is IVotes {
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
     mapping(address => address) private _delegates;
@@ -22,11 +22,7 @@ contract MockToken is IBreadKitToken {
     string public symbol = "MOCK";
     uint8 public decimals = 18;
 
-    function mint(address receiver) external payable override {
-        _mint(receiver, msg.value);
-    }
-
-    function mint(address receiver, uint256 amount) external override {
+    function mint(address receiver, uint256 amount) external {
         _mint(receiver, amount);
     }
 
@@ -69,30 +65,28 @@ contract MockToken is IBreadKitToken {
         return true;
     }
 
-    function delegates(address account) external view returns (address) {
+    function delegates(address account) external view override returns (address) {
         return _delegates[account] == address(0) ? account : _delegates[account];
     }
 
-    function delegate(address delegatee) external {
+    function delegate(address delegatee) external override {
         _delegates[msg.sender] = delegatee;
     }
 
-    function getVotes(address account) external view returns (uint256) {
+    function delegateBySig(address, uint256, uint256, uint8, bytes32, bytes32) external override {
+        // Mock implementation - not needed for tests
+    }
+
+    function getVotes(address account) external view override returns (uint256) {
         return _votingPower[account];
     }
 
-    function getPastVotes(address account, uint256) external view returns (uint256) {
+    function getPastVotes(address account, uint256) external view override returns (uint256) {
         return _votingPower[account];
     }
 
-    function burn(uint256, address) external override {}
-    function claimYield(uint256, address) external override {}
-    function prepareNewYieldClaimer(address) external override {}
-    function finalizeNewYieldClaimer() external override {}
-    function setYieldClaimer(address) external override {}
-
-    function yieldAccrued() external view override returns (uint256) {
-        return 0;
+    function getPastTotalSupply(uint256) external view override returns (uint256) {
+        return _totalSupply;
     }
 }
 
@@ -132,7 +126,7 @@ contract VotingModuleSimpleTest is Test {
         token.mint(voter2, 3 ether);
 
         // Deploy voting power strategy
-        tokenStrategy = new TokenBasedVotingPower(IBreadKitToken(address(token)));
+        tokenStrategy = new TokenBasedVotingPower(IVotes(address(token)));
 
         // Deploy mock recipient registry with 3 recipients
         address[] memory recipients = new address[](3);

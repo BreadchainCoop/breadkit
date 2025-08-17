@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IVotingPowerStrategy} from "../../interfaces/IVotingPowerStrategy.sol";
-import {IBreadKitToken} from "../../interfaces/IBreadKitToken.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {Checkpoints} from "@openzeppelin/contracts/utils/structs/Checkpoints.sol";
 import {Ownable} from "@solady/contracts/auth/Ownable.sol";
@@ -19,7 +18,7 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
     error EndAfterCurrentBlock();
 
     // Storage
-    IBreadKitToken public immutable votingToken;
+    IVotes public immutable votingToken;
     uint256 public previousCycleStart;
     uint256 public lastClaimedBlock;
 
@@ -30,7 +29,7 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
     /// @param _votingToken The token to use for voting power calculation
     /// @param _previousCycleStart The start block of the previous cycle
     /// @param _lastClaimedBlock The last block where yield was claimed
-    constructor(IBreadKitToken _votingToken, uint256 _previousCycleStart, uint256 _lastClaimedBlock) {
+    constructor(IVotes _votingToken, uint256 _previousCycleStart, uint256 _lastClaimedBlock) {
         if (address(_votingToken) == address(0)) revert InvalidToken();
         votingToken = _votingToken;
         previousCycleStart = _previousCycleStart;
@@ -60,13 +59,12 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
         if (start >= end) revert StartMustBeBeforeEnd();
         if (end > block.number) revert EndAfterCurrentBlock();
 
-        // Get the token as IVotes to access voting power
-        IVotes votes = IVotes(address(votingToken));
+        // Use the voting token directly as IVotes
 
         // Simplified implementation: use average of start and end voting power
         // weighted by the period length
-        uint256 startPower = start > 0 ? votes.getPastVotes(account, start - 1) : 0;
-        uint256 endPower = votes.getPastVotes(account, end - 1);
+        uint256 startPower = start > 0 ? votingToken.getPastVotes(account, start - 1) : 0;
+        uint256 endPower = votingToken.getPastVotes(account, end - 1);
 
         // If no voting power at end, return 0
         if (endPower == 0 && startPower == 0) return 0;

@@ -4,32 +4,45 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {VotingModule} from "../src/modules/VotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
-import {TimeWeightedVotingPower} from "../src/modules/strategies/TimeWeightedVotingPower.sol";
 import {SignatureVerifier} from "../src/modules/utils/SignatureVerifier.sol";
 import {VoteValidator} from "../src/modules/utils/VoteValidator.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
-import {IBreadKitToken} from "../src/interfaces/IBreadKitToken.sol";
-import {SexyDaiYield} from "../src/token-types/SexyDaiYield.sol";
-import {BreadKitFactory} from "../src/BreadKitFactory.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {IMockRecipientRegistry} from "../src/interfaces/IMockRecipientRegistry.sol";
+import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
+
+// Mock token implementation for testing
+contract MockToken is ERC20, ERC20Votes, ERC20Permit {
+    constructor() ERC20("Mock Token", "MOCK") ERC20Permit("Mock Token") {}
+    
+    function mint(address account, uint256 amount) external {
+        _mint(account, amount);
+    }
+    
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
+        super._update(from, to, amount);
+    }
+    
+    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+        return ERC20Permit.nonces(owner);
+    }
+}
 
 contract VotingModuleTest is Test {
     // Constants
     uint256 constant MAX_POINTS = 100;
 
-    // Test addresses
-    address constant wxDAI = 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d;
-    address constant sxDAI = 0xaf204776c7245bF4147c2612BF6e5972Ee483701;
-
     // Contracts
     VotingModule public votingModule;
     TokenBasedVotingPower public tokenStrategy;
-    TimeWeightedVotingPower public timeWeightedStrategy;
     SignatureVerifier public signatureVerifier;
     VoteValidator public voteValidator;
-    BreadKitFactory public factory;
-    IBreadKitToken public token;
+    MockToken public token;
+    MockRecipientRegistry public recipientRegistry;
 
     // Test accounts
     address public owner;
@@ -55,37 +68,33 @@ contract VotingModuleTest is Test {
         voter2 = vm.addr(voter2PrivateKey);
         voter3 = vm.addr(voter3PrivateKey);
 
-        // Deploy factory and token
-        factory = new BreadKitFactory(owner);
-
-        // Deploy and whitelist token implementation
-        address impl = address(new SexyDaiYield(wxDAI, sxDAI));
-        address beacon = address(new UpgradeableBeacon(impl, owner));
-        address[] memory beacons = new address[](1);
-        beacons[0] = beacon;
-        factory.whitelistBeacons(beacons);
-
-        // Deploy token
-        bytes memory payload = abi.encodeWithSelector(SexyDaiYield.initialize.selector, "Test Token", "TEST", owner);
-        token = IBreadKitToken(factory.createToken(beacon, payload, keccak256("test salt")));
-
+        // Deploy mock token
+        token = new MockToken();
+        
         // Mint tokens to test accounts
-        deal(voter1, 10 ether);
-        deal(voter2, 10 ether);
-        deal(voter3, 10 ether);
-
+        token.mint(voter1, 5 ether);
+        token.mint(voter2, 3 ether);
+        token.mint(voter3, 2 ether);
+        
+        // Delegate voting power to themselves (required for ERC20Votes)
         vm.prank(voter1);
-        token.mint{value: 5 ether}(voter1);
-
+        token.delegate(voter1);
+        
         vm.prank(voter2);
-        token.mint{value: 3 ether}(voter2);
-
+        token.delegate(voter2);
+        
         vm.prank(voter3);
-        token.mint{value: 2 ether}(voter3);
+        token.delegate(voter3);
+        
+        // Deploy recipient registry mock with 3 recipients
+        address[] memory recipients = new address[](3);
+        recipients[0] = address(0x111);
+        recipients[1] = address(0x222);
+        recipients[2] = address(0x333);
+        recipientRegistry = new MockRecipientRegistry(recipients);
 
-        // Deploy voting power strategies
-        tokenStrategy = new TokenBasedVotingPower(token);
-        timeWeightedStrategy = new TimeWeightedVotingPower(token, block.number - 1000, block.number - 100);
+        // Deploy voting power strategy
+        tokenStrategy = new TokenBasedVotingPower(IVotes(address(token)));
 
         // Deploy utility contracts
         signatureVerifier = new SignatureVerifier();
@@ -93,11 +102,11 @@ contract VotingModuleTest is Test {
 
         // Deploy and initialize voting module
         votingModule = new VotingModule();
-        IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](2);
+        IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](1);
         strategies[0] = IVotingPowerStrategy(address(tokenStrategy));
-        strategies[1] = IVotingPowerStrategy(address(timeWeightedStrategy));
 
         votingModule.initialize(MAX_POINTS, strategies);
+        votingModule.setRecipientRegistry(address(recipientRegistry));
     }
 
     function testInitialization() public view {
@@ -105,9 +114,9 @@ contract VotingModuleTest is Test {
         assertEq(votingModule.currentCycle(), 1);
 
         IVotingPowerStrategy[] memory strategies = votingModule.getVotingPowerStrategies();
-        assertEq(strategies.length, 2);
+        assertEq(strategies.length, 1);
         assertEq(address(strategies[0]), address(tokenStrategy));
-        assertEq(address(strategies[1]), address(timeWeightedStrategy));
+        assertEq(address(votingModule.recipientRegistry()), address(recipientRegistry));
     }
 
     function testDirectVoting() public {
@@ -206,6 +215,9 @@ contract VotingModuleTest is Test {
 
         // Verify vote was recorded
         assertTrue(votingModule.accountLastVoted(voter1) > 0);
+
+        // Advance block to ensure timestamps differ
+        vm.roll(block.number + 1);
 
         // Try to recast vote with different distribution - should fail
         uint256[] memory points2 = new uint256[](3);
