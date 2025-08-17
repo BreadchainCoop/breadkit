@@ -108,16 +108,6 @@ interface IVotingModule {
     /// @return Array of voting power strategy contracts
     function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
 
-    /// @notice Sets the maximum points that can be allocated per recipient
-    /// @dev Only callable by owner
-    /// @param _maxPoints The new maximum points value
-    function setMaxPoints(uint256 _maxPoints) external;
-
-    /// @notice Gets the expected number of vote points based on active recipients
-    /// @dev Used to validate vote arrays have correct length
-    /// @return The number of active recipients
-    function getExpectedPointsLength() external view returns (uint256);
-
     /// @notice Validates vote points distribution
     /// @dev Checks if points array is valid according to module rules
     /// @param points Array of points to validate
