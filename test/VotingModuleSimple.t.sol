@@ -164,7 +164,7 @@ contract VotingModuleSimpleTest is Test {
         bytes32 digest = _createVoteDigest(voter1, points, nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
-        
+
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded by checking project distributions

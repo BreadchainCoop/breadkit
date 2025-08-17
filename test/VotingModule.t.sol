@@ -110,19 +110,20 @@ contract VotingModuleTest is Test {
     }
 
     // Helper function to create vote signature
-    function createVoteSignature(
-        address voter,
-        uint256 privateKey,
-        uint256[] memory points,
-        uint256 nonce
-    ) internal view returns (bytes memory) {
+    function createVoteSignature(address voter, uint256 privateKey, uint256[] memory points, uint256 nonce)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes32 domainSeparator = votingModule.DOMAIN_SEPARATOR();
-        bytes32 structHash = keccak256(abi.encode(
-            keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)"),
-            voter,
-            keccak256(abi.encodePacked(points)),
-            nonce
-        ));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Vote(address voter,bytes32 pointsHash,uint256 nonce)"),
+                voter,
+                keccak256(abi.encodePacked(points)),
+                nonce
+            )
+        );
         bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, hash);
         return abi.encodePacked(r, s, v);
