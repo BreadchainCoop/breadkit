@@ -145,7 +145,7 @@ contract AutomationBaseTest is Test {
         emit AutomationExecuted(gelatoExecutor, block.number);
 
         vm.prank(gelatoExecutor);
-        gelatoAutomation.execute("");
+        gelatoAutomation.execute();
 
         // Verify distribution was called
         assertEq(distributionModule.distributeCallCount(), 1);
@@ -242,7 +242,7 @@ contract AutomationBaseTest is Test {
         distributionManager.setAvailableYield(2000);
 
         vm.prank(gelatoExecutor);
-        gelatoAutomation.execute("");
+        gelatoAutomation.execute();
         assertEq(distributionModule.distributeCallCount(), 2);
     }
 

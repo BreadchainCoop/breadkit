@@ -3,9 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
 import {BasisPointsVotingModule} from "../src/modules/BasisPointsVotingModule.sol";
+import {AbstractVotingModule} from "../src/abstracts/AbstractVotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
-import {SignatureVerifier} from "../src/modules/utils/SignatureVerifier.sol";
-import {VoteValidator} from "../src/modules/utils/VoteValidator.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -41,8 +40,6 @@ contract VotingModuleTest is Test {
     // Contracts
     BasisPointsVotingModule public votingModule;
     TokenBasedVotingPower public tokenStrategy;
-    SignatureVerifier public signatureVerifier;
-    VoteValidator public voteValidator;
     MockToken public token;
     MockRecipientRegistry public recipientRegistry;
     CycleModule public cycleModule;
@@ -100,8 +97,6 @@ contract VotingModuleTest is Test {
         tokenStrategy = new TokenBasedVotingPower(IVotes(address(token)));
 
         // Deploy utility contracts
-        signatureVerifier = new SignatureVerifier();
-        voteValidator = new VoteValidator();
 
         // Deploy and initialize cycle module
         cycleModule = new CycleModule();
@@ -296,7 +291,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Second vote with same nonce should fail
-        vm.expectRevert(BasisPointsVotingModule.NonceAlreadyUsed.selector);
+        vm.expectRevert(AbstractVotingModule.NonceAlreadyUsed.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -314,7 +309,7 @@ contract VotingModuleTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Vote should fail
-        vm.expectRevert(BasisPointsVotingModule.InvalidSignature.selector);
+        vm.expectRevert(AbstractVotingModule.InvalidSignature.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -344,7 +339,7 @@ contract VotingModuleTest is Test {
 
         uint256 nonce = 1;
         bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
-        vm.expectRevert(BasisPointsVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -356,7 +351,7 @@ contract VotingModuleTest is Test {
 
         uint256 nonce = 1;
         bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
-        vm.expectRevert(BasisPointsVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
