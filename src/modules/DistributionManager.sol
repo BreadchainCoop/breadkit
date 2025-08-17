@@ -10,43 +10,96 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {Ownable} from "@solady/contracts/auth/Ownable.sol";
 
 /// @title DistributionManager
-/// @notice Abstract contract that orchestrates the entire distribution process
-/// @dev Consolidates all distribution logic and provides hooks for module integration
+/// @notice Abstract contract that orchestrates the entire yield distribution process for BreadKit tokens
+/// @dev Consolidates all distribution logic and provides hooks for module integration.
+///      This contract manages yield collection from various sources, calculates distribution splits
+///      between fixed and voted allocations, and executes transfers to recipients based on voting results.
+///      It includes emergency controls, cycle management, and comprehensive validation mechanisms.
+/// @author BreadKit Team
 abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, Pausable, Ownable {
     using SafeERC20 for IERC20;
 
+    /// @notice Thrown when a zero address is provided where a valid address is required
     error ZeroAddress();
+    
+    /// @notice Thrown when an invalid cycle length (zero or negative) is provided
     error InvalidCycleLength();
+    
+    /// @notice Thrown when an invalid divisor (zero) is provided for yield splitting
     error InvalidDivisor();
+    
+    /// @notice Thrown when distribution validation fails and distribution cannot proceed
     error DistributionNotResolved();
+    
+    /// @notice Thrown when there is insufficient yield available for distribution
     error InsufficientYield();
+    
+    /// @notice Thrown when no active recipients are available for distribution
     error NoRecipients();
+    
+    /// @notice Thrown when attempting distribution before the cycle is complete
     error CycleNotComplete();
+    
+    /// @notice Thrown when a non-emergency admin tries to call emergency functions
     error OnlyEmergencyAdmin();
+    
+    /// @notice Thrown when no yield source is configured
     error NoYieldSource();
 
+    /// @notice Precision constant used for calculations (18 decimals)
     uint256 private constant PRECISION = 1e18;
 
+    /// @notice Address with emergency pause/unpause privileges
     address public emergencyAdmin;
+    
+    /// @notice Address of the token used for yield distribution
     address public yieldToken;
+    
+    /// @notice Address of the primary yield source
     address public yieldSource;
 
+    /// @notice Length of each distribution cycle in blocks
     uint256 public cycleLength;
+    
+    /// @notice Divisor used to calculate fixed vs voted yield split (e.g., 4 = 25% fixed, 75% voted)
     uint256 public yieldFixedSplitDivisor;
+    
+    /// @notice Block number of the last distribution
     uint256 public lastDistributionBlock;
+    
+    /// @notice Current cycle number (increments with each distribution)
     uint256 public cycleNumber;
+    
+    /// @notice Total amount of yield collected across all cycles
     uint256 public totalYieldCollected;
+    
+    /// @notice Block number of the last yield collection
     uint256 public lastCollectionBlock;
 
+    /// @notice Array of current recipient addresses
     address[] public recipients;
+    
+    /// @notice Array of current votes corresponding to recipients
     uint256[] public currentVotes;
+    
+    /// @notice Total number of votes cast in the current cycle
     uint256 public totalVotes;
 
+    /// @notice Mapping from cycle number to historical distribution data
     mapping(uint256 => DistributionState) public distributionHistory;
 
+    /// @notice Emitted when yield is collected from a source
+    /// @param source Address of the yield source
+    /// @param amount Amount of yield collected
+    /// @param blockNumber Block number when collection occurred
     event YieldCollected(address indexed source, uint256 amount, uint256 blockNumber);
+    
+    /// @notice Emitted when yield amount is validated for distribution
+    /// @param totalYield Total yield amount validated
     event YieldValidated(uint256 totalYield);
 
+    /// @notice Modifier to restrict access to emergency admin or owner
+    /// @dev Allows both emergencyAdmin and owner to call emergency functions
     modifier onlyEmergencyAdmin() {
         if (msg.sender != emergencyAdmin && msg.sender != owner()) {
             revert OnlyEmergencyAdmin();
@@ -223,7 +276,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     }
 
     /// @notice Hook for minting tokens before distribution
-    /// @dev Can be overridden for custom token minting logic
+    /// @dev Can be overridden for custom token minting logic.
+    ///      Calculates required tokens and mints them if needed.
+    /// @dev Virtual function that can be overridden by implementing contracts
     function _mintTokensBeforeDistribution() internal virtual {
         uint256 requiredTokens = calculateRequiredTokensForDistribution();
 
@@ -233,8 +288,11 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         }
     }
 
-    /// @notice Collects yield from the yield source
-    /// @return Total yield collected
+    /// @notice Collects yield from the configured yield source
+    /// @dev Attempts to collect yield from the source and updates collection tracking
+    /// @return totalYield Total amount of yield collected
+    /// @dev Reverts with NoYieldSource if no source is configured
+    /// @dev Reverts with InsufficientYield if no yield is available
     function _collectYield() internal returns (uint256) {
         if (yieldSource == address(0)) revert NoYieldSource();
 
@@ -250,19 +308,22 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         return totalYield;
     }
 
-    /// @notice Gets the total available yield from the yield source
-    /// @return Available yield
+    /// @notice Gets the total available yield from the configured yield source
+    /// @dev Checks the yield source for available yield without collecting it
+    /// @return availableYield Amount of yield currently available for collection
     function _getAvailableYield() internal view returns (uint256) {
         if (yieldSource == address(0)) return 0;
         return _getSourceYield(yieldSource);
     }
 
-    /// @notice Hook for getting voting results
-    /// @return votes Array of votes per recipient
+    /// @notice Hook for getting voting results from the voting system
+    /// @dev Virtual function that must be implemented by inheriting contracts
+    /// @return votes Array of vote counts corresponding to each recipient
     function _getVotingResults() internal view virtual returns (uint256[] memory votes);
 
-    /// @notice Hook for getting active recipients
-    /// @return Array of active recipient addresses
+    /// @notice Hook for getting active recipients eligible for distribution
+    /// @dev Virtual function that must be implemented by inheriting contracts
+    /// @return recipients Array of addresses that are currently eligible to receive distributions
     function _getActiveRecipients() internal view virtual returns (address[] memory);
 
     /// @notice Calculates fixed and voted split amounts
@@ -372,7 +433,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         }
     }
 
-    /// @notice Completes the cycle transition
+    /// @notice Completes the transition to the next distribution cycle
+    /// @dev Updates cycle tracking, resets voting state, and processes queued changes
+    /// @dev Virtual function that can be overridden to add custom cycle completion logic
     function _completeCycleTransition() internal virtual {
         lastDistributionBlock = block.number;
         cycleNumber++;
@@ -387,10 +450,18 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         emit CycleCompleted(cycleNumber, block.number);
     }
 
-    /// @notice Hook for processing queued changes
+    /// @notice Hook for processing any changes queued during the cycle
+    /// @dev Virtual function that can be overridden to implement custom change processing
+    /// @dev Called at the end of each cycle to apply pending updates
     function _processQueuedChanges() internal virtual;
 
-    /// @notice Records distribution in history
+    /// @notice Records the completed distribution in the historical record
+    /// @dev Stores distribution data in the distributionHistory mapping for the current cycle
+    /// @param totalYield Total amount of yield that was distributed
+    /// @param _totalVotes Total number of votes cast in this cycle
+    /// @param activeRecipients Array of recipient addresses that received distributions
+    /// @param votedDistributions Array of amounts distributed based on voting
+    /// @param fixedDistributions Array of amounts distributed as fixed allocations
     function _recordDistribution(
         uint256 totalYield,
         uint256 _totalVotes,
@@ -412,8 +483,9 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         emit DistributionValidated(totalYield, activeRecipients.length);
     }
 
-    /// @notice Calculates required tokens for distribution
-    /// @return Required token amount
+    /// @notice Calculates the number of tokens that need to be minted for distribution
+    /// @dev Compares available yield with current token balance to determine mint requirement
+    /// @return requiredTokens Amount of tokens that need to be minted (0 if sufficient balance exists)
     function calculateRequiredTokensForDistribution() public view returns (uint256) {
         uint256 currentBalance = IERC20(yieldToken).balanceOf(address(this));
         uint256 availableYield = _getAvailableYield();
