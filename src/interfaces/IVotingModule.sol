@@ -131,10 +131,8 @@ interface IVotingModule {
     /// @param nonce The nonce for replay protection
     /// @param signature The signature to validate
     /// @return True if signature is valid, false otherwise
-    function validateSignature(
-        address voter,
-        uint256[] calldata points,
-        uint256 nonce,
-        bytes calldata signature
-    ) external view returns (bool);
+    function validateSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
+        external
+        view
+        returns (bool);
 }
