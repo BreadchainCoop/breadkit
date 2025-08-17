@@ -34,25 +34,25 @@ contract CycleModuleTest is Test {
 
     function testNotInitializedFunctions() public {
         CycleModule uninitializedModule = new CycleModule();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.getCurrentCycle();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.isCycleComplete();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.startNewCycle();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.getCycleInfo();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.getBlocksUntilNextCycle();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.getCycleProgress();
-        
+
         vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
         uninitializedModule.updateCycleLength(200);
     }
@@ -165,7 +165,7 @@ contract CycleModuleTest is Test {
 
     function testUnauthorizedCannotInitialize() public {
         CycleModule newModule = new CycleModule();
-        
+
         vm.prank(user);
         vm.expectRevert(AbstractCycleModule.NotAuthorized.selector);
         newModule.initialize(100);

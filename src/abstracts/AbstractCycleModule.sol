@@ -91,7 +91,7 @@ abstract contract AbstractCycleModule is ICycleModule {
         if (initialized) {
             revert AlreadyInitialized();
         }
-        
+
         if (_cycleLength == 0) {
             revert InvalidCycleLength();
         }

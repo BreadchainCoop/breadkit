@@ -17,7 +17,7 @@ contract CycleModule is AbstractCycleModule {
         // Additional custom validation can be added here
         // For example: checking if certain conditions are met
         // return someCustomCondition();
-        
+
         return true;
     }
 }
