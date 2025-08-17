@@ -2,44 +2,33 @@
 pragma solidity ^0.8.20;
 
 import "./AutomationBase.sol";
-
-// TODO: Re-enable when Chainlink dependency is properly installed
-// import {AutomationCompatibleInterface} from
-//     "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
-
-// Temporary interface stub
-interface AutomationCompatibleInterface {
-    function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
-    function performUpkeep(bytes calldata performData) external;
-}
+import {AutomationCompatibleInterface} from
+    "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 
 /// @title ChainlinkAutomation
 /// @notice Chainlink Keeper compatible automation implementation
 /// @dev Implements Chainlink automation interface for yield distribution
 contract ChainlinkAutomation is AutomationBase, AutomationCompatibleInterface {
-    // ============ Constructor ============
-    constructor(address _owner) AutomationBase(_owner) {}
+    constructor(address _distributionManager) AutomationBase(_distributionManager) {}
 
-    // ============ Chainlink Automation ============
-
-    /// @notice Checks if upkeep is needed (Chainlink Keeper interface)
-    /// @param checkData Data passed by Chainlink Keeper network
+    /// @notice Chainlink-compatible upkeep check
+    /// @dev Called by Chainlink nodes to check if work needs to be performed
+    /// @param checkData Not used but required by Chainlink interface
     /// @return upkeepNeeded Whether upkeep is needed
-    /// @return performData Data to pass to performUpkeep
+    /// @return performData The data to pass to performUpkeep
     function checkUpkeep(bytes calldata checkData)
         external
-        view
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
         upkeepNeeded = isDistributionReady();
-        performData = checkData; // Pass through the data
-        return (upkeepNeeded, performData);
+        performData = upkeepNeeded ? getAutomationData() : new bytes(0);
     }
 
-    /// @notice Performs the upkeep (Chainlink Keeper interface)
-    /// @dev performData parameter is unused but required by interface
-    function performUpkeep(bytes calldata /* performData */ ) external override {
+    /// @notice Chainlink-compatible upkeep execution
+    /// @dev Called by Chainlink nodes when checkUpkeep returns true
+    /// @param performData The data returned by checkUpkeep
+    function performUpkeep(bytes calldata performData) external override {
         executeDistribution();
     }
 }
