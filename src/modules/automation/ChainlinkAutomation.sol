@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./AutomationBase.sol";
-import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
 
 /// @title ChainlinkAutomation
 /// @notice Chainlink Keeper compatible automation implementation

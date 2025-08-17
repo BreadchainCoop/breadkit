@@ -1,4 +1,4 @@
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 @openzeppelin/contracts/=lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/
 @solady/contracts/=lib/solady/src/
-@chainlink/contracts/=lib/chainlink/contracts
+@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/
