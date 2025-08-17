@@ -143,12 +143,6 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
     }
 
     /// @inheritdoc IBasisPointsVotingModule
-    function delegate(address delegatee) external override {
-        // Delegation is handled at the token level (ERC20Votes)
-        // This is a no-op but kept for interface compatibility
-    }
-
-    /// @inheritdoc IBasisPointsVotingModule
     function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         if (points.length == 0) return false;
 
