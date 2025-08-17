@@ -14,6 +14,8 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {IMockRecipientRegistry} from "../src/interfaces/IMockRecipientRegistry.sol";
 import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
+import {CycleModule} from "../src/CycleModule.sol";
+import {ICycleModule} from "../src/interfaces/ICycleModule.sol";
 
 // Mock token implementation for testing
 contract MockToken is ERC20, ERC20Votes, ERC20Permit {
@@ -43,6 +45,7 @@ contract VotingModuleTest is Test {
     VoteValidator public voteValidator;
     MockToken public token;
     MockRecipientRegistry public recipientRegistry;
+    CycleModule public cycleModule;
 
     // Test accounts
     address public owner;
@@ -100,6 +103,10 @@ contract VotingModuleTest is Test {
         signatureVerifier = new SignatureVerifier();
         voteValidator = new VoteValidator();
 
+        // Deploy and initialize cycle module
+        cycleModule = new CycleModule();
+        cycleModule.initialize(1000); // 1000 blocks per cycle
+
         // Deploy and initialize voting module
         votingModule = new BasisPointsVotingModule();
         IVotingPowerStrategy[] memory strategies = new IVotingPowerStrategy[](1);
@@ -107,6 +114,7 @@ contract VotingModuleTest is Test {
 
         votingModule.initialize(MAX_POINTS, strategies);
         votingModule.setRecipientRegistry(address(recipientRegistry));
+        votingModule.setCycleModule(address(cycleModule));
     }
 
     // Helper function to create vote signature
@@ -131,7 +139,7 @@ contract VotingModuleTest is Test {
 
     function testInitialization() public view {
         assertEq(votingModule.maxPoints(), MAX_POINTS);
-        assertEq(votingModule.currentCycle(), 1);
+        assertEq(cycleModule.getCurrentCycle(), 1);
 
         IVotingPowerStrategy[] memory strategies = votingModule.getVotingPowerStrategies();
         assertEq(strategies.length, 1);
@@ -150,7 +158,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded by checking that the voter has voted
-        assertTrue(votingModule.accountLastVoted(voter1) > 0);
+        assertEq(votingModule.accountLastVotedCycle(voter1), cycleModule.getCurrentCycle());
 
         uint256[] memory projectDist = votingModule.getCurrentVotingDistribution();
         assertEq(projectDist.length, 3);
@@ -176,7 +184,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Verify vote was recorded
-        assertTrue(votingModule.accountLastVoted(voter1) > 0);
+        assertEq(votingModule.accountLastVotedCycle(voter1), cycleModule.getCurrentCycle());
 
         // Verify nonce was used
         assertTrue(votingModule.isNonceUsed(voter1, nonce));
@@ -220,8 +228,8 @@ contract VotingModuleTest is Test {
         votingModule.castBatchVotesWithSignature(voters, pointsArray, nonces, signatures);
 
         // Verify both votes were recorded
-        assertTrue(votingModule.accountLastVoted(voter1) > 0);
-        assertTrue(votingModule.accountLastVoted(voter2) > 0);
+        assertEq(votingModule.accountLastVotedCycle(voter1), cycleModule.getCurrentCycle());
+        assertEq(votingModule.accountLastVotedCycle(voter2), cycleModule.getCurrentCycle());
     }
 
     function testNoVoteRecasting() public {
@@ -236,7 +244,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points1, nonce1, signature1);
 
         // Verify vote was recorded
-        assertTrue(votingModule.accountLastVoted(voter1) > 0);
+        assertEq(votingModule.accountLastVotedCycle(voter1), cycleModule.getCurrentCycle());
 
         // Advance block to ensure timestamps differ
         vm.roll(block.number + 1);
@@ -309,7 +317,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(noTokensVoter, points, nonce, signature);
 
         // Verify vote was recorded but with zero power
-        assertTrue(votingModule.accountLastVoted(noTokensVoter) > 0);
+        assertEq(votingModule.accountLastVotedCycle(noTokensVoter), cycleModule.getCurrentCycle());
     }
 
     function testExceedsMaxPoints() public {
@@ -375,9 +383,12 @@ contract VotingModuleTest is Test {
         bytes memory signature1 = createVoteSignature(voter1, voter1PrivateKey, points, nonce1);
         votingModule.castVoteWithSignature(voter1, points, nonce1, signature1);
 
+        // Advance blocks to complete the cycle (1000 blocks per cycle)
+        vm.roll(block.number + 1000);
+        
         // Start new cycle
-        votingModule.startNewCycle();
-        assertEq(votingModule.currentCycle(), 2);
+        cycleModule.startNewCycle();
+        assertEq(cycleModule.getCurrentCycle(), 2);
 
         // Vote in cycle 2 with signature
         uint256 nonce2 = 1;
@@ -385,9 +396,9 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter2, points, nonce2, signature2);
 
         // Check that votes are recorded in different cycles
-        assertTrue(votingModule.accountLastVoted(voter1) > 0);
-        assertTrue(votingModule.accountLastVoted(voter2) > 0);
-        assertEq(votingModule.currentCycle(), 2);
+        assertEq(votingModule.accountLastVotedCycle(voter1), 1);
+        assertEq(votingModule.accountLastVotedCycle(voter2), 2);
+        assertEq(cycleModule.getCurrentCycle(), 2);
     }
 
     function testNonceSkipping() public {

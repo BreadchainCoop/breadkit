@@ -5,6 +5,7 @@ import {IBasisPointsVotingModule} from "../interfaces/IBasisPointsVotingModule.s
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
 import {IMockRecipientRegistry} from "../interfaces/IMockRecipientRegistry.sol";
+import {ICycleModule} from "../interfaces/ICycleModule.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -35,12 +36,6 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
     /// @notice Maximum points that can be allocated to a single recipient
     uint256 public maxPoints;
 
-    /// @notice Current voting cycle number
-    uint256 public currentCycle;
-
-    /// @notice Block number when the current cycle started
-    uint256 public lastCycleStart;
-
     /// @notice Array of voting power calculation strategies
     IVotingPowerStrategy[] public votingPowerStrategies;
 
@@ -50,9 +45,9 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
     /// @dev voter => nonce => used
     mapping(address => mapping(uint256 => bool)) public usedNonces;
 
-    /// @notice Block number when an account last voted
-    /// @dev voter => block number
-    mapping(address => uint256) public accountLastVoted;
+    /// @notice Tracks which cycle an account last voted in
+    /// @dev voter => cycle number
+    mapping(address => uint256) public accountLastVotedCycle;
 
     /// @notice Vote distribution across projects for each cycle
     /// @dev cycle => array of weighted votes per project
@@ -60,7 +55,7 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
 
     /// @notice Total voting power used in each cycle
     /// @dev cycle => total voting power
-    mapping(uint256 => uint256) public cycleVotingPower;
+    mapping(uint256 => uint256) public totalCycleVotingPower;
 
     /// @notice Current vote count for each cycle
     /// @dev cycle => vote count
@@ -73,14 +68,17 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
 
     /// @notice Reference to the recipient registry for validation
     IMockRecipientRegistry public recipientRegistry;
+    
+    /// @notice Reference to the cycle module for cycle management
+    ICycleModule public cycleModule;
 
     // Events
     event VoteCastWithSignature(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce);
     event BatchVotesCast(address[] voters, uint256[] nonces);
     event VotingModuleInitialized(IVotingPowerStrategy[] strategies);
-    event CycleStarted(uint256 indexed cycle, uint256 startBlock);
     event DistributionModuleSet(address distributionModule);
     event RecipientRegistrySet(address recipientRegistry);
+    event CycleModuleSet(address cycleModule);
     event MaxPointsSet(uint256 maxPoints);
 
     // Errors
@@ -112,9 +110,6 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
             if (address(_strategies[i]) == address(0)) revert InvalidStrategy();
             votingPowerStrategies.push(_strategies[i]);
         }
-
-        currentCycle = 1;
-        lastCycleStart = block.number;
 
         emit VotingModuleInitialized(_strategies);
     }
@@ -193,6 +188,8 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
 
     /// @inheritdoc IBasisPointsVotingModule
     function getCurrentVotingDistribution() external view override returns (uint256[] memory) {
+        if (address(cycleModule) == address(0)) return new uint256[](0);
+        uint256 currentCycle = cycleModule.getCurrentCycle();
         return projectDistributions[currentCycle];
     }
 
@@ -254,12 +251,11 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         return recipientRegistry.getActiveRecipientsCount();
     }
 
-    /// @notice Starts a new voting cycle
-    /// @dev Only callable by owner. Increments cycle counter and resets cycle start block.
-    function startNewCycle() external onlyOwner {
-        currentCycle++;
-        lastCycleStart = block.number;
-        emit CycleStarted(currentCycle, block.number);
+    /// @notice Sets the cycle module address
+    /// @param _cycleModule Address of the cycle module
+    function setCycleModule(address _cycleModule) external onlyOwner {
+        cycleModule = ICycleModule(_cycleModule);
+        emit CycleModuleSet(_cycleModule);
     }
 
     // ============ Internal Functions ============
@@ -292,7 +288,9 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         if (!validateVotePoints(points)) revert InvalidPointsDistribution();
 
         // Process vote
-        bool hasVotedInCycle = accountLastVoted[voter] >= lastCycleStart;
+        // Check if voter has already voted in this cycle
+        uint256 currentCycle = address(cycleModule) != address(0) ? cycleModule.getCurrentCycle() : 0;
+        bool hasVotedInCycle = accountLastVotedCycle[voter] == currentCycle && currentCycle > 0;
         _processVote(voter, points, votingPower, hasVotedInCycle);
 
         emit VoteCastWithSignature(voter, points, votingPower, nonce);
@@ -327,23 +325,32 @@ contract BasisPointsVotingModule is IBasisPointsVotingModule, Initializable, EIP
         }
 
         // Update cycle voting power
-        currentVotes[currentCycle] += votingPower;
-        cycleVotingPower[currentCycle] += votingPower;
+        if (address(cycleModule) != address(0)) {
+            uint256 currentCycle = cycleModule.getCurrentCycle();
+            currentVotes[currentCycle] += votingPower;
+            totalCycleVotingPower[currentCycle] += votingPower;
+        }
 
         // Calculate and update project distributions
-        for (uint256 i = 0; i < points.length; i++) {
-            uint256 allocation = (votingPower * points[i]) / PRECISION;
+        if (address(cycleModule) != address(0)) {
+            uint256 currentCycle = cycleModule.getCurrentCycle();
+            for (uint256 i = 0; i < points.length; i++) {
+                uint256 allocation = (votingPower * points[i]) / PRECISION;
 
-            // Update project distributions
-            if (i >= projectDistributions[currentCycle].length) {
-                projectDistributions[currentCycle].push(allocation);
-            } else {
-                projectDistributions[currentCycle][i] += allocation;
+                // Update project distributions
+                if (i >= projectDistributions[currentCycle].length) {
+                    projectDistributions[currentCycle].push(allocation);
+                } else {
+                    projectDistributions[currentCycle][i] += allocation;
+                }
             }
         }
 
-        // Update last voted block
-        accountLastVoted[voter] = block.number;
+        // Update last voted cycle
+        if (address(cycleModule) != address(0)) {
+            uint256 currentCycle = cycleModule.getCurrentCycle();
+            accountLastVotedCycle[voter] = currentCycle;
+        }
 
         // Update distribution module if set
         if (address(distributionModule) != address(0)) {

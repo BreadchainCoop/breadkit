@@ -7,11 +7,6 @@ import {IVotingPowerStrategy} from "./IVotingPowerStrategy.sol";
 /// @notice Interface for the basis points voting module that manages project voting with signature-based voting
 /// @dev This module is responsible for handling voting on projects using basis points and tracking voting power
 interface IBasisPointsVotingModule {
-    /// @notice Delegates voting power to another address
-    /// @dev This function allows a user to delegate their voting power to another address
-    /// @param delegatee The address to delegate voting power to
-    function delegate(address delegatee) external;
-
     /// @notice Gets the current voting power of an account
     /// @dev Returns the total voting power an account currently has
     /// @param account The address to check voting power for

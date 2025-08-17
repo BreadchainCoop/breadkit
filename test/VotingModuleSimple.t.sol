@@ -9,6 +9,8 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IMockRecipientRegistry} from "../src/interfaces/IMockRecipientRegistry.sol";
 import {MockRecipientRegistry} from "./mocks/MockRecipientRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CycleModule} from "../src/CycleModule.sol";
+import {ICycleModule} from "../src/interfaces/ICycleModule.sol";
 
 // Simple mock token for testing (non-upgradeable)
 contract MockToken is IVotes {
@@ -99,6 +101,7 @@ contract VotingModuleSimpleTest is Test {
     TokenBasedVotingPower public tokenStrategy;
     MockToken public token;
     MockRecipientRegistry public recipientRegistry;
+    CycleModule public cycleModule;
 
     // Test accounts
     address public owner;
@@ -142,11 +145,16 @@ contract VotingModuleSimpleTest is Test {
 
         votingModule.initialize(MAX_POINTS, strategies);
         votingModule.setRecipientRegistry(address(recipientRegistry));
+        
+        // Deploy and initialize cycle module
+        cycleModule = new CycleModule();
+        cycleModule.initialize(1000); // 1000 blocks per cycle
+        votingModule.setCycleModule(address(cycleModule));
     }
 
     function testInitialization() public view {
         assertEq(votingModule.maxPoints(), MAX_POINTS);
-        assertEq(votingModule.currentCycle(), 1);
+        assertEq(cycleModule.getCurrentCycle(), 1);
 
         IVotingPowerStrategy[] memory strategies = votingModule.getVotingPowerStrategies();
         assertEq(strategies.length, 1);
