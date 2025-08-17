@@ -15,7 +15,8 @@ contract CycleModuleTest is Test {
 
     function setUp() public {
         vm.roll(START_BLOCK);
-        cycleModule = new CycleModule(CYCLE_LENGTH, START_BLOCK);
+        cycleModule = new CycleModule();
+        cycleModule.initialize(CYCLE_LENGTH);
     }
 
     function testInitialState() public view {
@@ -23,6 +24,37 @@ contract CycleModuleTest is Test {
         assertEq(cycleModule.cycleLength(), CYCLE_LENGTH);
         assertEq(cycleModule.lastCycleStartBlock(), START_BLOCK);
         assertTrue(cycleModule.authorized(owner));
+        assertTrue(cycleModule.initialized());
+    }
+
+    function testCannotReinitialize() public {
+        vm.expectRevert(AbstractCycleModule.AlreadyInitialized.selector);
+        cycleModule.initialize(200);
+    }
+
+    function testNotInitializedFunctions() public {
+        CycleModule uninitializedModule = new CycleModule();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.getCurrentCycle();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.isCycleComplete();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.startNewCycle();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.getCycleInfo();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.getBlocksUntilNextCycle();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.getCycleProgress();
+        
+        vm.expectRevert(AbstractCycleModule.NotInitialized.selector);
+        uninitializedModule.updateCycleLength(200);
     }
 
     function testCycleCompletion() public {
@@ -129,6 +161,14 @@ contract CycleModuleTest is Test {
         vm.prank(user);
         vm.expectRevert(AbstractCycleModule.NotAuthorized.selector);
         cycleModule.updateCycleLength(200);
+    }
+
+    function testUnauthorizedCannotInitialize() public {
+        CycleModule newModule = new CycleModule();
+        
+        vm.prank(user);
+        vm.expectRevert(AbstractCycleModule.NotAuthorized.selector);
+        newModule.initialize(100);
     }
 
     function testMultipleCycles() public {

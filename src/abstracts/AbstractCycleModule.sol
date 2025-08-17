@@ -19,6 +19,9 @@ abstract contract AbstractCycleModule is ICycleModule {
     /// @notice Addresses authorized to trigger cycle transitions
     mapping(address => bool) public authorized;
 
+    /// @notice Tracks whether the module has been initialized
+    bool public initialized;
+
     /// @notice Error thrown when caller is not authorized
     error NotAuthorized();
 
@@ -27,6 +30,12 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Error thrown when cycle transition is invalid
     error InvalidCycleTransition();
+
+    /// @notice Error thrown when module is already initialized
+    error AlreadyInitialized();
+
+    /// @notice Error thrown when module is not initialized
+    error NotInitialized();
 
     /// @notice Emitted when a new cycle starts
     /// @param cycleNumber The number of the new cycle
@@ -48,6 +57,11 @@ abstract contract AbstractCycleModule is ICycleModule {
     /// @param newLength The new cycle length
     event CycleLengthUpdated(uint256 oldLength, uint256 newLength);
 
+    /// @notice Emitted when the module is initialized
+    /// @param cycleLength The cycle length in blocks
+    /// @param startBlock The starting block number
+    event ModuleInitialized(uint256 cycleLength, uint256 startBlock);
+
     /// @notice Modifier to restrict access to authorized addresses
     modifier onlyAuthorized() {
         if (!authorized[msg.sender]) {
@@ -56,21 +70,38 @@ abstract contract AbstractCycleModule is ICycleModule {
         _;
     }
 
+    /// @notice Modifier to ensure module is initialized
+    modifier onlyInitialized() {
+        if (!initialized) {
+            revert NotInitialized();
+        }
+        _;
+    }
+
+    /// @notice Constructor sets up initial authorization
+    constructor() {
+        // Authorize the deployer
+        authorized[msg.sender] = true;
+        emit AuthorizationUpdated(msg.sender, true);
+    }
+
     /// @notice Initializes the cycle module with fixed cycle parameters
     /// @param _cycleLength The length of each cycle in blocks
-    /// @param _startBlock The block number to start counting from (0 for current block)
-    constructor(uint256 _cycleLength, uint256 _startBlock) {
+    function initialize(uint256 _cycleLength) external onlyAuthorized {
+        if (initialized) {
+            revert AlreadyInitialized();
+        }
+        
         if (_cycleLength == 0) {
             revert InvalidCycleLength();
         }
 
         cycleLength = _cycleLength;
-        lastCycleStartBlock = _startBlock > 0 ? _startBlock : block.number;
+        lastCycleStartBlock = block.number;
         currentCycle = 1;
+        initialized = true;
 
-        // Authorize the deployer
-        authorized[msg.sender] = true;
-        emit AuthorizationUpdated(msg.sender, true);
+        emit ModuleInitialized(_cycleLength, block.number);
     }
 
     /// @notice Adds or removes an authorized address
@@ -83,19 +114,19 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Gets the current cycle number
     /// @return The current cycle number
-    function getCurrentCycle() external view virtual returns (uint256) {
+    function getCurrentCycle() external view virtual onlyInitialized returns (uint256) {
         return currentCycle;
     }
 
     /// @notice Checks if the cycle timing allows for distribution
     /// @return Whether the current cycle has completed
-    function isCycleComplete() public view virtual returns (bool) {
+    function isCycleComplete() public view virtual onlyInitialized returns (bool) {
         return block.number >= lastCycleStartBlock + cycleLength;
     }
 
     /// @notice Starts a new cycle
     /// @dev Only callable by authorized contracts when cycle is complete
-    function startNewCycle() external virtual onlyAuthorized {
+    function startNewCycle() external virtual onlyAuthorized onlyInitialized {
         if (!isCycleComplete()) {
             revert InvalidCycleTransition();
         }
@@ -115,7 +146,7 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Gets information about the current cycle
     /// @return Information about the current cycle
-    function getCycleInfo() external view virtual returns (CycleInfo memory) {
+    function getCycleInfo() external view virtual onlyInitialized returns (CycleInfo memory) {
         uint256 endBlock = lastCycleStartBlock + cycleLength;
         uint256 blocksRemaining = 0;
 
@@ -134,7 +165,7 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Gets the number of blocks until the next cycle
     /// @return The number of blocks remaining in the current cycle
-    function getBlocksUntilNextCycle() external view virtual returns (uint256) {
+    function getBlocksUntilNextCycle() external view virtual onlyInitialized returns (uint256) {
         uint256 endBlock = lastCycleStartBlock + cycleLength;
         if (block.number >= endBlock) {
             return 0;
@@ -144,7 +175,7 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Gets the progress of the current cycle as a percentage
     /// @return The cycle progress (0-100)
-    function getCycleProgress() external view virtual returns (uint256) {
+    function getCycleProgress() external view virtual onlyInitialized returns (uint256) {
         uint256 blocksElapsed = block.number - lastCycleStartBlock;
         if (blocksElapsed >= cycleLength) {
             return 100;
@@ -154,7 +185,7 @@ abstract contract AbstractCycleModule is ICycleModule {
 
     /// @notice Updates the cycle length for future cycles
     /// @param newCycleLength The new cycle length in blocks
-    function updateCycleLength(uint256 newCycleLength) external virtual onlyAuthorized {
+    function updateCycleLength(uint256 newCycleLength) external virtual onlyAuthorized onlyInitialized {
         if (newCycleLength == 0) {
             revert InvalidCycleLength();
         }
