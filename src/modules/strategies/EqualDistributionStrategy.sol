@@ -6,55 +6,35 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title EqualDistributionStrategy
-/// @notice Distributes yield equally among all projects
-/// @dev Implements equal distribution logic
+/// @notice Distributes yield equally among all recipients from registry
+/// @dev Implements equal distribution logic using recipient registry
 contract EqualDistributionStrategy is BaseDistributionStrategy {
     using SafeERC20 for IERC20;
 
-    address[] public projects;
+    constructor(address _yieldToken, address _recipientRegistry) 
+        BaseDistributionStrategy(_yieldToken, _recipientRegistry) {}
 
-    error NoProjects();
-
-    constructor(address _yieldToken) BaseDistributionStrategy(_yieldToken) {}
-
-    /// @dev Distributes amount equally among all projects
+    /// @dev Distributes amount equally among all recipients
     /// @param amount Total amount to distribute
-    function _distribute(uint256 amount) internal override {
-        if (projects.length == 0) revert NoProjects();
-
-        uint256 amountPerProject = amount / projects.length;
+    /// @param recipients Array of recipients to distribute to
+    function _distribute(uint256 amount, address[] memory recipients) internal override {
+        uint256 amountPerRecipient = amount / recipients.length;
         uint256 distributed = 0;
 
-        for (uint256 i = 0; i < projects.length; i++) {
+        for (uint256 i = 0; i < recipients.length; i++) {
             uint256 share;
 
-            // Last project gets remainder to handle rounding
-            if (i == projects.length - 1) {
+            // Last recipient gets remainder to handle rounding
+            if (i == recipients.length - 1) {
                 share = amount - distributed;
             } else {
-                share = amountPerProject;
+                share = amountPerRecipient;
             }
 
             if (share > 0) {
-                yieldToken.safeTransfer(projects[i], share);
+                yieldToken.safeTransfer(recipients[i], share);
                 distributed += share;
             }
         }
-    }
-
-    /// @notice Sets the projects to distribute to
-    /// @param _projects Array of project addresses
-    function setProjects(address[] calldata _projects) external onlyOwner {
-        delete projects;
-        for (uint256 i = 0; i < _projects.length; i++) {
-            if (_projects[i] == address(0)) revert ZeroAddress();
-            projects.push(_projects[i]);
-        }
-    }
-
-    /// @notice Gets the current projects
-    /// @return Array of project addresses
-    function getProjects() external view returns (address[] memory) {
-        return projects;
     }
 }

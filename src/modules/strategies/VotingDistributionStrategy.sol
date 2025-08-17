@@ -8,29 +8,26 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title VotingDistributionStrategy
 /// @notice Distributes yield based on voting results
-/// @dev Implements proportional distribution based on vote counts
+/// @dev Implements proportional distribution based on vote counts using recipient registry
 contract VotingDistributionStrategy is BaseDistributionStrategy {
     using SafeERC20 for IERC20;
 
     IVotingModule public votingModule;
-    address[] public projects;
-    mapping(address => uint256) public projectIndex;
 
     error InvalidVotesLength();
-    error NoProjects();
 
-    constructor(address _yieldToken, address _votingModule) BaseDistributionStrategy(_yieldToken) {
+    constructor(address _yieldToken, address _recipientRegistry, address _votingModule) 
+        BaseDistributionStrategy(_yieldToken, _recipientRegistry) {
         if (_votingModule == address(0)) revert ZeroAddress();
         votingModule = IVotingModule(_votingModule);
     }
 
     /// @dev Distributes amount based on voting weights
     /// @param amount Total amount to distribute
-    function _distribute(uint256 amount) internal override {
-        if (projects.length == 0) revert NoProjects();
-
+    /// @param recipients Array of recipients to distribute to
+    function _distribute(uint256 amount, address[] memory recipients) internal override {
         uint256[] memory currentVotes = votingModule.getCurrentVotingDistribution();
-        if (currentVotes.length != projects.length) revert InvalidVotesLength();
+        if (currentVotes.length != recipients.length) revert InvalidVotesLength();
 
         uint256 totalVotes = 0;
         for (uint256 i = 0; i < currentVotes.length; i++) {
@@ -41,33 +38,22 @@ contract VotingDistributionStrategy is BaseDistributionStrategy {
 
         uint256 distributed = 0;
 
-        for (uint256 i = 0; i < projects.length; i++) {
+        for (uint256 i = 0; i < recipients.length; i++) {
             if (currentVotes[i] > 0) {
-                uint256 projectShare;
+                uint256 recipientShare;
 
-                // Last project with votes gets remainder to handle rounding
-                if (i == projects.length - 1) {
-                    projectShare = amount - distributed;
+                // Last recipient with votes gets remainder to handle rounding
+                if (i == recipients.length - 1) {
+                    recipientShare = amount - distributed;
                 } else {
-                    projectShare = (amount * currentVotes[i]) / totalVotes;
+                    recipientShare = (amount * currentVotes[i]) / totalVotes;
                 }
 
-                if (projectShare > 0) {
-                    yieldToken.safeTransfer(projects[i], projectShare);
-                    distributed += projectShare;
+                if (recipientShare > 0) {
+                    yieldToken.safeTransfer(recipients[i], recipientShare);
+                    distributed += recipientShare;
                 }
             }
-        }
-    }
-
-    /// @notice Sets the projects to distribute to based on voting
-    /// @param _projects Array of project addresses
-    function setProjects(address[] calldata _projects) external onlyOwner {
-        delete projects;
-        for (uint256 i = 0; i < _projects.length; i++) {
-            if (_projects[i] == address(0)) revert ZeroAddress();
-            projects.push(_projects[i]);
-            projectIndex[_projects[i]] = i;
         }
     }
 
@@ -76,11 +62,5 @@ contract VotingDistributionStrategy is BaseDistributionStrategy {
     function setVotingModule(address _votingModule) external onlyOwner {
         if (_votingModule == address(0)) revert ZeroAddress();
         votingModule = IVotingModule(_votingModule);
-    }
-
-    /// @notice Gets the current projects
-    /// @return Array of project addresses
-    function getProjects() external view returns (address[] memory) {
-        return projects;
     }
 }
