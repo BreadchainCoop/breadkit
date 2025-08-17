@@ -152,11 +152,11 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
             return (false, "No votes cast");
         }
 
-        // Validate yield amount precision and sufficiency
-        uint256[] memory votes = _getVotingResults();
-        if (!_validateYieldDistributionPrecision(availableYield, activeRecipients, votes, totalVotes)) {
-            return (false, "Insufficient yield precision for accurate distribution");
-        }
+        // // Validate yield amount precision and sufficiency
+        // uint256[] memory votes = _getVotingResults();
+        // if (!_validateYieldDistributionPrecision(availableYield, activeRecipients, votes, totalVotes)) {
+        //     return (false, "Insufficient yield precision for accurate distribution");
+        // }
 
         return (true, "");
     }
@@ -488,48 +488,48 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
         }
     }
 
-    /// @notice Validates that the yield amount provides sufficient precision for distribution
-    /// @param availableYield Total available yield
-    /// @param votes Array of votes per recipient
-    /// @param _totalVotes Total votes cast
-    /// @return valid Whether the yield amount provides sufficient precision
-    function _validateYieldDistributionPrecision(
-        uint256 availableYield,
-        address[] memory, /* activeRecipients */
-        uint256[] memory votes,
-        uint256 _totalVotes
-    ) internal view returns (bool valid) {
-        // Basic requirement: must have some yield to distribute
-        if (availableYield == 0) {
-            return false;
-        }
+    // /// @notice Validates that the yield amount provides sufficient precision for distribution
+    // /// @param availableYield Total available yield
+    // /// @param votes Array of votes per recipient
+    // /// @param _totalVotes Total votes cast
+    // /// @return valid Whether the yield amount provides sufficient precision
+    // function _validateYieldDistributionPrecision(
+    //     uint256 availableYield,
+    //     address[] memory, /* activeRecipients */
+    //     uint256[] memory votes,
+    //     uint256 _totalVotes
+    // ) internal view returns (bool valid) {
+    //     // Basic requirement: must have some yield to distribute
+    //     if (availableYield == 0) {
+    //         return false;
+    //     }
 
-        // Calculate splits to validate both portions
-        (, uint256 votedAmount) = _calculateSplits(availableYield);
+    //     // Calculate splits to validate both portions
+    //     (, uint256 votedAmount) = _calculateSplits(availableYield);
 
-        // Validate voted distribution precision: check for potential underflow in voted calculations
-        if (votedAmount > 0 && votes.length > 0 && _totalVotes > 0) {
-            // Find the smallest non-zero vote
-            uint256 smallestVote = type(uint256).max;
-            for (uint256 i = 0; i < votes.length; i++) {
-                if (votes[i] > 0 && votes[i] < smallestVote) {
-                    smallestVote = votes[i];
-                }
-            }
+    //     // Validate voted distribution precision: check for potential underflow in voted calculations
+    //     if (votedAmount > 0 && votes.length > 0 && _totalVotes > 0) {
+    //         // Find the smallest non-zero vote
+    //         uint256 smallestVote = type(uint256).max;
+    //         for (uint256 i = 0; i < votes.length; i++) {
+    //             if (votes[i] > 0 && votes[i] < smallestVote) {
+    //                 smallestVote = votes[i];
+    //             }
+    //         }
 
-            // Check if smallest vote share results in at least 1 wei
-            // This prevents underflow in the _calculateVotedDistributions function
-            if (smallestVote != type(uint256).max) {
-                uint256 smallestDistribution = (smallestVote * votedAmount) / _totalVotes;
-                if (smallestDistribution == 0) {
-                    return false;
-                }
-            }
-        }
+    //         // Check if smallest vote share results in at least 1 wei
+    //         // This prevents underflow in the _calculateVotedDistributions function
+    //         if (smallestVote != type(uint256).max) {
+    //             uint256 smallestDistribution = (smallestVote * votedAmount) / _totalVotes;
+    //             if (smallestDistribution == 0) {
+    //                 return false;
+    //             }
+    //         }
+    //     }
 
-        // For fixed distributions, the _calculateFixedDistributions function
-        // handles integer division gracefully, so no additional validation needed
+    //     // For fixed distributions, the _calculateFixedDistributions function
+    //     // handles integer division gracefully, so no additional validation needed
 
-        return true;
-    }
+    //     return true;
+    // }
 }
