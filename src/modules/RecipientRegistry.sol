@@ -8,7 +8,6 @@ import "./BaseRecipientRegistry.sol";
 /// @dev Simple implementation of BaseRecipientRegistry with admin-only queueing
 /// @author BreadKit Protocol
 contract RecipientRegistry is BaseRecipientRegistry {
-
     /// @notice Initialize the registry with an admin
     /// @dev This function replaces the constructor for upgradeable contracts
     /// @dev Sets the admin as the owner who can queue recipient changes
