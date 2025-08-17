@@ -19,7 +19,7 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
     error StrategyAlreadyRegistered();
 
     IERC20 public immutable yieldToken;
-    
+
     mapping(address => bool) public strategies;
     address[] public strategyList;
 
@@ -57,7 +57,7 @@ contract DistributionStrategyModule is IDistributionStrategyModule, Ownable {
         if (!strategies[strategy]) revert StrategyNotRegistered();
 
         strategies[strategy] = false;
-        
+
         // Remove from list
         for (uint256 i = 0; i < strategyList.length; i++) {
             if (strategyList[i] == strategy) {

@@ -31,7 +31,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
     IVotingModule public votingModule;
     IAMMVotingPowerModule public ammVotingPower;
     IERC20 public yieldToken;
-    
+
     address public equalDistributionStrategy;
     address public votingDistributionStrategy;
 
@@ -109,7 +109,6 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         emit YieldDistributed(totalYield, totalVotes, projects, votedDistributions, fixedDistributions);
         emit CycleCompleted(block.number / cycleLength, block.number);
     }
-
 
     /// @inheritdoc IDistributionModule
     function getCurrentDistributionState()
@@ -216,7 +215,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
         if (_strategyModule == address(0)) revert ZeroAddress();
         strategyModule = IDistributionStrategyModule(_strategyModule);
     }
-    
+
     /// @notice Sets the equal distribution strategy
     /// @param _strategy Address of the equal distribution strategy
     function setEqualDistributionStrategy(address _strategy) external onlyOwner {
@@ -227,7 +226,7 @@ contract EnhancedDistributionModule is IDistributionModule, Ownable {
             strategyModule.addStrategy(_strategy);
         }
     }
-    
+
     /// @notice Sets the voting distribution strategy
     /// @param _strategy Address of the voting distribution strategy
     function setVotingDistributionStrategy(address _strategy) external onlyOwner {
