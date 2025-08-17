@@ -16,8 +16,9 @@ contract VotingDistributionStrategy is BaseDistributionStrategy {
 
     error InvalidVotesLength();
 
-    constructor(address _yieldToken, address _recipientRegistry, address _votingModule) 
-        BaseDistributionStrategy(_yieldToken, _recipientRegistry) {
+    constructor(address _yieldToken, address _recipientRegistry, address _votingModule)
+        BaseDistributionStrategy(_yieldToken, _recipientRegistry)
+    {
         if (_votingModule == address(0)) revert ZeroAddress();
         votingModule = IVotingModule(_votingModule);
     }

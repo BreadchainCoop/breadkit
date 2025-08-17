@@ -11,8 +11,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract EqualDistributionStrategy is BaseDistributionStrategy {
     using SafeERC20 for IERC20;
 
-    constructor(address _yieldToken, address _recipientRegistry) 
-        BaseDistributionStrategy(_yieldToken, _recipientRegistry) {}
+    constructor(address _yieldToken, address _recipientRegistry)
+        BaseDistributionStrategy(_yieldToken, _recipientRegistry)
+    {}
 
     /// @dev Distributes amount equally among all recipients
     /// @param amount Total amount to distribute

@@ -31,7 +31,7 @@ abstract contract BaseDistributionStrategy is IDistributionStrategy, Ownable {
     /// @inheritdoc IDistributionStrategy
     function distribute(uint256 amount) external virtual override {
         if (amount == 0) revert ZeroAmount();
-        
+
         address[] memory recipients = _getRecipients();
         if (recipients.length == 0) revert NoRecipients();
 

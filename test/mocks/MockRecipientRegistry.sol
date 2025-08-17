@@ -6,7 +6,7 @@ import {IRecipientRegistry} from "../../src/interfaces/IRecipientRegistry.sol";
 contract MockRecipientRegistry is IRecipientRegistry {
     address[] private recipients;
     mapping(address => bool) private isActive;
-    
+
     address[] private additionQueue;
     address[] private removalQueue;
     mapping(address => bool) private inAdditionQueue;
@@ -16,7 +16,7 @@ contract MockRecipientRegistry is IRecipientRegistry {
         if (recipient == address(0)) revert InvalidRecipient();
         if (isActive[recipient]) revert RecipientAlreadyExists();
         if (inAdditionQueue[recipient]) revert RecipientAlreadyQueued();
-        
+
         additionQueue.push(recipient);
         inAdditionQueue[recipient] = true;
         emit RecipientQueued(recipient, true);
@@ -25,7 +25,7 @@ contract MockRecipientRegistry is IRecipientRegistry {
     function queueRecipientRemoval(address recipient) external override {
         if (!isActive[recipient]) revert RecipientNotFound();
         if (inRemovalQueue[recipient]) revert RecipientAlreadyQueued();
-        
+
         removalQueue.push(recipient);
         inRemovalQueue[recipient] = true;
         emit RecipientQueued(recipient, false);
@@ -51,7 +51,7 @@ contract MockRecipientRegistry is IRecipientRegistry {
             address recipient = removalQueue[i];
             isActive[recipient] = false;
             inRemovalQueue[recipient] = false;
-            
+
             // Remove from recipients array
             for (uint256 j = 0; j < recipients.length; j++) {
                 if (recipients[j] == recipient) {
@@ -60,7 +60,7 @@ contract MockRecipientRegistry is IRecipientRegistry {
                     break;
                 }
             }
-            
+
             emit RecipientRemoved(recipient);
             removed++;
         }
@@ -110,7 +110,7 @@ contract MockRecipientRegistry is IRecipientRegistry {
     function isQueuedForRemoval(address recipient) external view override returns (bool) {
         return inRemovalQueue[recipient];
     }
-    
+
     // Helper function for testing - directly add recipients
     function addRecipients(address[] calldata _recipients) external {
         for (uint256 i = 0; i < _recipients.length; i++) {
