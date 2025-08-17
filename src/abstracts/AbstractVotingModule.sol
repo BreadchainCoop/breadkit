@@ -61,10 +61,6 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @dev cycle => total voting power
     mapping(uint256 => uint256) public totalCycleVotingPower;
 
-    /// @notice Current vote count for each cycle
-    /// @dev cycle => vote count
-    mapping(uint256 => uint256) public currentVotes;
-
     /// @notice Stores the voting power used by each voter in each cycle
     /// @dev cycle => voter => voting power used
     mapping(uint256 => mapping(address => uint256)) public voterCyclePower;
@@ -315,7 +311,6 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
         if (previousVotingPower > 0) {
             // Revert previous vote's impact on total voting power
             totalCycleVotingPower[currentCycle] -= previousVotingPower;
-            currentVotes[currentCycle] -= 1; // Decrement vote count since we're replacing
 
             // Revert previous vote's impact on project distributions
             uint256[] storage previousPoints = voterCyclePoints[currentCycle][voter];
@@ -326,7 +321,6 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
         }
 
         // Apply new vote
-        currentVotes[currentCycle] += 1;
         totalCycleVotingPower[currentCycle] += votingPower;
 
         // Store voter's current voting power and points for potential future recasting

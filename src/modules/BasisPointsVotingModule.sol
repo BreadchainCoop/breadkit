@@ -190,14 +190,6 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         return totalCycleVotingPower[cycle];
     }
 
-    /// @notice Gets the number of votes cast in a specific cycle
-    /// @dev Counts unique voters, not total voting power
-    /// @param cycle The cycle number to check
-    /// @return The number of votes cast in that cycle
-    function getCurrentVotes(uint256 cycle) external view returns (uint256) {
-        return currentVotes[cycle];
-    }
-
     /// @notice Gets the vote distribution for a specific cycle
     /// @dev Returns the weighted vote totals for each recipient
     /// @param cycle The cycle number to check

@@ -267,11 +267,6 @@ contract VotingModuleTest is Test {
         assertEq(dist2[0], (votingPower * 60) / 1e18, "First project should have new allocation");
         assertEq(dist2[1], (votingPower * 25) / 1e18, "Second project should have new allocation");
         assertEq(dist2[2], (votingPower * 15) / 1e18, "Third project should have new allocation");
-
-        // Verify vote count remains 1 (replaced, not added)
-        assertEq(
-            votingModule.currentVotes(cycleModule.getCurrentCycle()), 1, "Vote count should remain 1 after recasting"
-        );
     }
 
     function testNonceReplayProtection() public {
