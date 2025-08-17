@@ -26,10 +26,4 @@ contract TokenBasedVotingPower is IVotingPowerStrategy {
         // Use delegated votes (or balance if not delegated) for voting power
         return votingToken.getVotes(account);
     }
-
-    /// @inheritdoc IVotingPowerStrategy
-    function getAccumulatedVotingPower(address account) external view override returns (uint256) {
-        // For token-based strategy, accumulated power equals current power
-        return votingToken.getVotes(account);
-    }
 }

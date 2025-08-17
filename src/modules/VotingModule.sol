@@ -208,6 +208,16 @@ contract VotingModule is IVotingModule, Initializable, EIP712Upgradeable, Ownabl
         return votingPowerStrategies;
     }
 
+    // Issue #43: Store required votes at proposal creation in VotingRecipientRegistry
+    // https://github.com/BreadchainCoop/breadkit/issues/43
+    // TODO: Implement when VotingRecipientRegistry is added
+    // /// @inheritdoc IVotingModule
+    // function getRequiredVotes(uint256 proposalId) external view override returns (uint256) {
+    //     // This will be implemented when VotingRecipientRegistry is integrated
+    //     // For now, return a placeholder value or revert
+    //     revert("getRequiredVotes: Not yet implemented - see issue #43");
+    // }
+
     /// @inheritdoc IVotingModule
     function setMaxPoints(uint256 _maxPoints) external override onlyOwner {
         maxPoints = _maxPoints;

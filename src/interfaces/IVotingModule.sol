@@ -106,4 +106,13 @@ interface IVotingModule {
     /// @dev Returns the array of configured voting power strategies
     /// @return Array of voting power strategy contracts
     function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
+
+    // Issue #43: Store required votes at proposal creation in VotingRecipientRegistry
+    // https://github.com/BreadchainCoop/breadkit/issues/43
+    // TODO: Implement when VotingRecipientRegistry is added
+    // /// @notice Gets the required number of votes for a proposal
+    // /// @dev Returns the stored required votes for proposal execution
+    // /// @param proposalId The ID of the proposal
+    // /// @return The number of required votes
+    // function getRequiredVotes(uint256 proposalId) external view returns (uint256);
 }

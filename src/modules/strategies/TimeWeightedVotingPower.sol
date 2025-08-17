@@ -43,12 +43,6 @@ contract TimeWeightedVotingPower is IVotingPowerStrategy, Ownable {
         return getVotingPowerForPeriod(account, previousCycleStart, lastClaimedBlock);
     }
 
-    /// @inheritdoc IVotingPowerStrategy
-    function getAccumulatedVotingPower(address account) external view override returns (uint256) {
-        // Accumulated power since last cycle
-        return getVotingPowerForPeriod(account, lastClaimedBlock, block.number);
-    }
-
     /// @notice Get voting power for a specific period (simplified implementation)
     /// @dev Simplified time-weighted calculation using available IVotes interface
     /// @param account The account to calculate voting power for
