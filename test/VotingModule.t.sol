@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {BasisPointsVotingModule} from "../src/modules/BasisPointsVotingModule.sol";
 import {AbstractVotingModule} from "../src/abstracts/AbstractVotingModule.sol";
+import {IVotingModule} from "../src/interfaces/IVotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
@@ -286,7 +287,7 @@ contract VotingModuleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Second vote with same nonce should fail
-        vm.expectRevert(AbstractVotingModule.NonceAlreadyUsed.selector);
+        vm.expectRevert(IVotingModule.NonceAlreadyUsed.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -304,7 +305,7 @@ contract VotingModuleTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Vote should fail
-        vm.expectRevert(AbstractVotingModule.InvalidSignature.selector);
+        vm.expectRevert(IVotingModule.InvalidSignature.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -334,7 +335,7 @@ contract VotingModuleTest is Test {
 
         uint256 nonce = 1;
         bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
-        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(IVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -346,7 +347,7 @@ contract VotingModuleTest is Test {
 
         uint256 nonce = 1;
         bytes memory signature = createVoteSignature(voter1, voter1PrivateKey, points, nonce);
-        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(IVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 

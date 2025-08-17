@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {BasisPointsVotingModule} from "../src/modules/BasisPointsVotingModule.sol";
 import {AbstractVotingModule} from "../src/abstracts/AbstractVotingModule.sol";
+import {IVotingModule} from "../src/interfaces/IVotingModule.sol";
 import {TokenBasedVotingPower} from "../src/modules/strategies/TokenBasedVotingPower.sol";
 import {IVotingPowerStrategy} from "../src/interfaces/IVotingPowerStrategy.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
@@ -223,7 +224,7 @@ contract VotingModuleSimpleTest is Test {
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Second vote with same nonce should fail
-        vm.expectRevert(AbstractVotingModule.NonceAlreadyUsed.selector);
+        vm.expectRevert(IVotingModule.NonceAlreadyUsed.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 
@@ -238,7 +239,7 @@ contract VotingModuleSimpleTest is Test {
         bytes32 digest = _createVoteDigest(voter1, points, nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(voter1PrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
-        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(IVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
 
         // Try with 4 points (too many)
@@ -253,7 +254,7 @@ contract VotingModuleSimpleTest is Test {
         bytes32 digest2 = _createVoteDigest(voter1, points2, nonce2);
         (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(voter1PrivateKey, digest2);
         bytes memory signature2 = abi.encodePacked(r2, s2, v2);
-        vm.expectRevert(AbstractVotingModule.InvalidPointsDistribution.selector);
+        vm.expectRevert(IVotingModule.InvalidPointsDistribution.selector);
         votingModule.castVoteWithSignature(voter1, points2, nonce2, signature2);
     }
 
@@ -321,7 +322,7 @@ contract VotingModuleSimpleTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Vote should fail
-        vm.expectRevert(AbstractVotingModule.InvalidSignature.selector);
+        vm.expectRevert(IVotingModule.InvalidSignature.selector);
         votingModule.castVoteWithSignature(voter1, points, nonce, signature);
     }
 

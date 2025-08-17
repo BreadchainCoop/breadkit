@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IVotingModule} from "../interfaces/IVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {IMockRecipientRegistry} from "../interfaces/IMockRecipientRegistry.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
@@ -16,7 +17,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 /// @dev Provides core voting functionality including vote processing, signature verification,
 ///      and integration with voting power strategies, cycle management, and recipient registries.
 ///      Inheriting contracts must implement specific voting logic.
-abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, OwnableUpgradeable {
+abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Upgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
 
     // ============ Constants ============
@@ -83,75 +84,7 @@ abstract contract AbstractVotingModule is Initializable, EIP712Upgradeable, Owna
     /// @dev Manages voting cycles and transitions between periods
     ICycleModule public cycleModule;
 
-    // ============ Events ============
-
-    /// @notice Emitted when a vote is cast with a signature
-    /// @param voter The address of the voter
-    /// @param points Array of points allocated to each recipient
-    /// @param votingPower The total voting power used
-    /// @param nonce The nonce used for replay protection
-    /// @param signature The EIP-712 signature
-    event VoteCast(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce, bytes signature);
-
-    /// @notice Emitted when multiple votes are cast in a batch
-    /// @param voters Array of voter addresses
-    /// @param nonces Array of nonces used
-    event BatchVotesCast(address[] voters, uint256[] nonces);
-
-    /// @notice Emitted when the voting module is initialized
-    /// @param strategies Array of voting power strategies
-    event VotingModuleInitialized(IVotingPowerStrategy[] strategies);
-
-    /// @notice Emitted when the distribution module is set
-    /// @param distributionModule Address of the distribution module
-    event DistributionModuleSet(address distributionModule);
-
-    /// @notice Emitted when the recipient registry is set
-    /// @param recipientRegistry Address of the recipient registry
-    event RecipientRegistrySet(address recipientRegistry);
-
-    /// @notice Emitted when the cycle module is set
-    /// @param cycleModule Address of the cycle module
-    event CycleModuleSet(address cycleModule);
-
-    /// @notice Emitted when max points is updated
-    /// @param maxPoints New maximum points value
-    event MaxPointsSet(uint256 maxPoints);
-
-    // ============ Errors ============
-
-    /// @notice Thrown when an invalid signature is provided
-    error InvalidSignature();
-
-    /// @notice Thrown when a nonce has already been used
-    error NonceAlreadyUsed();
-
-    /// @notice Thrown when points distribution is invalid
-    error InvalidPointsDistribution();
-
-    /// @notice Thrown when points exceed the maximum allowed
-    error ExceedsMaxPoints();
-
-    /// @notice Thrown when zero vote points are submitted
-    error ZeroVotePoints();
-
-    /// @notice Thrown when array lengths don't match in batch operations
-    error ArrayLengthMismatch();
-
-    /// @notice Thrown when batch size exceeds maximum allowed
-    error BatchTooLarge();
-
-    /// @notice Thrown when no strategies are provided during initialization
-    error NoStrategiesProvided();
-
-    /// @notice Thrown when an invalid strategy address is provided
-    error InvalidStrategy();
-
-    /// @notice Thrown when the number of recipients doesn't match expected
-    error IncorrectNumberOfRecipients();
-
-    /// @notice Thrown when recipient registry is not set
-    error RecipientRegistryNotSet();
+    // Events and Errors are inherited from IVotingModule
 
     // ============ Initialization ============
 
