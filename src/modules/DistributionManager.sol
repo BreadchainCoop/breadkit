@@ -21,28 +21,28 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     /// @notice Thrown when a zero address is provided where a valid address is required
     error ZeroAddress();
-    
+
     /// @notice Thrown when an invalid cycle length (zero or negative) is provided
     error InvalidCycleLength();
-    
+
     /// @notice Thrown when an invalid divisor (zero) is provided for yield splitting
     error InvalidDivisor();
-    
+
     /// @notice Thrown when distribution validation fails and distribution cannot proceed
     error DistributionNotResolved();
-    
+
     /// @notice Thrown when there is insufficient yield available for distribution
     error InsufficientYield();
-    
+
     /// @notice Thrown when no active recipients are available for distribution
     error NoRecipients();
-    
+
     /// @notice Thrown when attempting distribution before the cycle is complete
     error CycleNotComplete();
-    
+
     /// @notice Thrown when a non-emergency admin tries to call emergency functions
     error OnlyEmergencyAdmin();
-    
+
     /// @notice Thrown when no yield source is configured
     error NoYieldSource();
 
@@ -51,37 +51,37 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
 
     /// @notice Address with emergency pause/unpause privileges
     address public emergencyAdmin;
-    
+
     /// @notice Address of the token used for yield distribution
     address public yieldToken;
-    
+
     /// @notice Address of the primary yield source
     address public yieldSource;
 
     /// @notice Length of each distribution cycle in blocks
     uint256 public cycleLength;
-    
+
     /// @notice Divisor used to calculate fixed vs voted yield split (e.g., 4 = 25% fixed, 75% voted)
     uint256 public yieldFixedSplitDivisor;
-    
+
     /// @notice Block number of the last distribution
     uint256 public lastDistributionBlock;
-    
+
     /// @notice Current cycle number (increments with each distribution)
     uint256 public cycleNumber;
-    
+
     /// @notice Total amount of yield collected across all cycles
     uint256 public totalYieldCollected;
-    
+
     /// @notice Block number of the last yield collection
     uint256 public lastCollectionBlock;
 
     /// @notice Array of current recipient addresses
     address[] public recipients;
-    
+
     /// @notice Array of current votes corresponding to recipients
     uint256[] public currentVotes;
-    
+
     /// @notice Total number of votes cast in the current cycle
     uint256 public totalVotes;
 
@@ -93,7 +93,7 @@ abstract contract DistributionManager is IDistributionModule, ReentrancyGuard, P
     /// @param amount Amount of yield collected
     /// @param blockNumber Block number when collection occurred
     event YieldCollected(address indexed source, uint256 amount, uint256 blockNumber);
-    
+
     /// @notice Emitted when yield amount is validated for distribution
     /// @param totalYield Total yield amount validated
     event YieldValidated(uint256 totalYield);
