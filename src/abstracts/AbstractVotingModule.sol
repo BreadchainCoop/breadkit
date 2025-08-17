@@ -181,6 +181,74 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
         return recipientRegistry.getActiveRecipientsCount();
     }
 
+    // ============ Getter Functions ============
+
+    /// @notice Gets the precision factor used in calculations
+    /// @dev Returns the constant PRECISION value for external contracts
+    /// @return The precision factor (1e18)
+    function getPrecision() external pure returns (uint256) {
+        return PRECISION;
+    }
+
+    /// @notice Gets the maximum batch size for batch voting
+    /// @dev Returns the constant MAX_BATCH_SIZE value
+    /// @return The maximum number of votes in a batch (50)
+    function getMaxBatchSize() external pure returns (uint256) {
+        return MAX_BATCH_SIZE;
+    }
+
+    /// @notice Gets the EIP-712 typehash for vote signatures
+    /// @dev Returns the constant VOTE_TYPEHASH for external verification
+    /// @return The keccak256 hash of the Vote type structure
+    function getVoteTypehash() external pure returns (bytes32) {
+        return VOTE_TYPEHASH;
+    }
+
+    // ============ View Functions ============
+
+    /// @notice Checks if a voter has already voted in the current cycle
+    /// @dev Used to determine if a vote would be a recast
+    /// @param voter The address to check
+    /// @return True if the voter has voted in the current cycle
+    function hasVotedInCurrentCycle(address voter) external view returns (bool) {
+        uint256 currentCycle = cycleModule.getCurrentCycle();
+        return voterCyclePower[currentCycle][voter] > 0;
+    }
+
+    /// @notice Gets the voting power a voter used in a specific cycle
+    /// @dev Returns 0 if the voter hasn't voted in that cycle
+    /// @param cycle The cycle number to check
+    /// @param voter The voter's address
+    /// @return The voting power used by the voter in that cycle
+    function getVoterCyclePower(uint256 cycle, address voter) external view returns (uint256) {
+        return voterCyclePower[cycle][voter];
+    }
+
+    /// @notice Gets the points distribution a voter submitted in a specific cycle
+    /// @dev Returns empty array if the voter hasn't voted in that cycle
+    /// @param cycle The cycle number to check
+    /// @param voter The voter's address
+    /// @return Array of points the voter allocated in that cycle
+    function getVoterCyclePoints(uint256 cycle, address voter) external view returns (uint256[] memory) {
+        return voterCyclePoints[cycle][voter];
+    }
+
+    /// @notice Gets the total voting power used in a specific cycle
+    /// @dev Useful for calculating voting participation and weight
+    /// @param cycle The cycle number to check
+    /// @return The total voting power used in that cycle
+    function getTotalCycleVotingPower(uint256 cycle) external view returns (uint256) {
+        return totalCycleVotingPower[cycle];
+    }
+
+    /// @notice Gets the vote distribution for a specific cycle
+    /// @dev Returns the weighted vote totals for each recipient
+    /// @param cycle The cycle number to check
+    /// @return Array of weighted vote totals for each recipient
+    function getProjectDistributions(uint256 cycle) external view returns (uint256[] memory) {
+        return projectDistributions[cycle];
+    }
+
     // ============ Internal Functions ============
 
     /// @notice Processes a single vote with signature verification
