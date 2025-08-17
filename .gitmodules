@@ -11,6 +11,3 @@
 	path = lib/chainlink
 	url = https://github.com/smartcontractkit/chainlink
 	branch = 1.4.0
-[submodule "lib/chainlink-brownie-contracts"]
-	path = lib/chainlink-brownie-contracts
-	url = https://github.com/smartcontractkit/chainlink-brownie-contracts
