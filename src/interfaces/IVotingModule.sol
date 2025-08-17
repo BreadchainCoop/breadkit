@@ -108,12 +108,6 @@ interface IVotingModule {
     /// @return Array of voting power strategy contracts
     function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
 
-    /// @notice Validates vote points distribution
-    /// @dev Checks if points array is valid according to module rules
-    /// @param points Array of points to validate
-    /// @return True if points are valid, false otherwise
-    function validateVotePoints(uint256[] calldata points) external view returns (bool);
-
     /// @notice Validates a vote signature
     /// @dev Verifies that a signature is valid for the given vote parameters
     /// @param voter The address of the voter
