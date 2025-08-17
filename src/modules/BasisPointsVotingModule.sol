@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {AbstractVotingModule} from "../abstracts/AbstractVotingModule.sol";
-import {IBasisPointsVotingModule} from "../interfaces/IBasisPointsVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -13,34 +12,30 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///      This module allows users to allocate voting points across multiple recipients
 ///      using signature-based voting for gas efficiency and better UX.
 /// @custom:security-contact security@breadchain.xyz
-contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModule {
+contract BasisPointsVotingModule is AbstractVotingModule {
     
-    // ============ Override Resolution ============
-    // These functions are defined in both AbstractVotingModule and IBasisPointsVotingModule
-    // We explicitly override to resolve the diamond inheritance issue
-    
-    function getVotingPower(address account) external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (uint256) {
+    function getVotingPower(address account) external view override returns (uint256) {
         return _calculateTotalVotingPower(account);
     }
     
-    function getCurrentVotingDistribution() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (uint256[] memory) {
+    function getCurrentVotingDistribution() external view override returns (uint256[] memory) {
         uint256 currentCycle = cycleModule.getCurrentCycle();
         return projectDistributions[currentCycle];
     }
     
-    function DOMAIN_SEPARATOR() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bytes32) {
+    function DOMAIN_SEPARATOR() external view override returns (bytes32) {
         return _domainSeparatorV4();
     }
     
-    function isNonceUsed(address voter, uint256 nonce) external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+    function isNonceUsed(address voter, uint256 nonce) external view override returns (bool) {
         return usedNonces[voter][nonce];
     }
     
-    function getVotingPowerStrategies() external view override(AbstractVotingModule, IBasisPointsVotingModule) returns (IVotingPowerStrategy[] memory) {
+    function getVotingPowerStrategies() external view override returns (IVotingPowerStrategy[] memory) {
         return votingPowerStrategies;
     }
     
-    function setMaxPoints(uint256 _maxPoints) external override(AbstractVotingModule, IBasisPointsVotingModule) onlyOwner {
+    function setMaxPoints(uint256 _maxPoints) external override onlyOwner {
         maxPoints = _maxPoints;
         emit MaxPointsSet(_maxPoints);
     }
@@ -50,14 +45,14 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
         uint256[] calldata points,
         uint256 nonce,
         bytes calldata signature
-    ) public view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+    ) public view override returns (bool) {
         bytes32 structHash = keccak256(abi.encode(VOTE_TYPEHASH, voter, keccak256(abi.encodePacked(points)), nonce));
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, signature);
         return signer == voter && !usedNonces[voter][nonce];
     }
     
-    function validateVotePoints(uint256[] calldata points) public view override(AbstractVotingModule, IBasisPointsVotingModule) returns (bool) {
+    function validateVotePoints(uint256[] calldata points) public view override returns (bool) {
         return _validateVotePoints(points);
     }
     
@@ -98,7 +93,6 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
 
     // ============ External Functions ============
 
-    /// @inheritdoc IBasisPointsVotingModule
     /// @notice Casts a vote with an EIP-712 signature
     /// @dev Validates the signature and processes the vote using the voter's current voting power.
     ///      The signature must be valid and the nonce must not have been used.
@@ -111,11 +105,10 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
         uint256[] calldata points,
         uint256 nonce,
         bytes calldata signature
-    ) external override {
+    ) external {
         _castSingleVote(voter, points, nonce, signature);
     }
 
-    /// @inheritdoc IBasisPointsVotingModule
     /// @notice Casts multiple votes in a single transaction for gas efficiency
     /// @dev Processes multiple votes atomically. If any vote fails, the entire batch reverts.
     ///      Limited to MAX_BATCH_SIZE votes per transaction to prevent gas limit issues.
@@ -128,7 +121,7 @@ contract BasisPointsVotingModule is AbstractVotingModule, IBasisPointsVotingModu
         uint256[][] calldata points,
         uint256[] calldata nonces,
         bytes[] calldata signatures
-    ) external override {
+    ) external {
         // Validate array lengths match
         if (
             voters.length != points.length ||
