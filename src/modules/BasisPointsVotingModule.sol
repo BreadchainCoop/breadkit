@@ -18,6 +18,10 @@ contract BasisPointsVotingModule is AbstractVotingModule {
     /// @dev Configurable per implementation to control vote distribution
     uint256 public maxPoints;
 
+    /// @notice Vote distribution across projects for each cycle
+    /// @dev cycle => array of weighted votes per project
+    mapping(uint256 => uint256[]) public projectDistributions;
+
     // ============ Constructor ============
 
     /// @notice Creates a new BasisPointsVotingModule instance
@@ -94,6 +98,24 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         emit BatchVotesCast(voters, nonces);
     }
 
+    // ============ View Functions ============
+
+    /// @notice Gets the current voting distribution for the active cycle
+    /// @dev Returns the array of weighted votes for each project in the current cycle
+    /// @return Array of vote weights for each project
+    function getCurrentVotingDistribution() external view returns (uint256[] memory) {
+        uint256 currentCycle = cycleModule.getCurrentCycle();
+        return projectDistributions[currentCycle];
+    }
+
+    /// @notice Gets the vote distribution for a specific cycle
+    /// @dev Returns the weighted vote totals for each recipient
+    /// @param cycle The cycle number to check
+    /// @return Array of weighted vote totals for each recipient
+    function getProjectDistributions(uint256 cycle) external view returns (uint256[] memory) {
+        return projectDistributions[cycle];
+    }
+
     // ============ Admin Functions ============
 
     /// @notice Sets the maximum points that can be allocated per recipient
@@ -105,6 +127,54 @@ contract BasisPointsVotingModule is AbstractVotingModule {
     }
 
     // ============ Internal Functions ============
+
+    /// @notice Processes and records a vote
+    /// @dev Updates project distributions and cycle voting power. Handles vote recasting.
+    /// @param voter Address of the voter
+    /// @param points Array of points allocated to each recipient
+    /// @param votingPower Total voting power of the voter
+    function _processVote(address voter, uint256[] calldata points, uint256 votingPower) internal override {
+        uint256 currentCycle = cycleModule.getCurrentCycle();
+
+        // Check if voter has already voted in this cycle and revert their previous vote
+        uint256 previousVotingPower = voterCyclePower[currentCycle][voter];
+        if (previousVotingPower > 0) {
+            // Revert previous vote's impact on total voting power
+            totalCycleVotingPower[currentCycle] -= previousVotingPower;
+
+            // Revert previous vote's impact on project distributions
+            uint256[] storage previousPoints = voterCyclePoints[currentCycle][voter];
+            for (uint256 i = 0; i < previousPoints.length; i++) {
+                uint256 previousAllocation = (previousVotingPower * previousPoints[i]) / PRECISION;
+                projectDistributions[currentCycle][i] -= previousAllocation;
+            }
+        }
+
+        // Apply new vote
+        totalCycleVotingPower[currentCycle] += votingPower;
+
+        // Store voter's current voting power and points for potential future recasting
+        voterCyclePower[currentCycle][voter] = votingPower;
+        delete voterCyclePoints[currentCycle][voter]; // Clear previous points array
+        for (uint256 i = 0; i < points.length; i++) {
+            voterCyclePoints[currentCycle][voter].push(points[i]);
+        }
+
+        // Calculate and update project distributions with new vote
+        for (uint256 i = 0; i < points.length; i++) {
+            uint256 allocation = (votingPower * points[i]) / PRECISION;
+
+            // Update project distributions
+            if (i >= projectDistributions[currentCycle].length) {
+                projectDistributions[currentCycle].push(allocation);
+            } else {
+                projectDistributions[currentCycle][i] += allocation;
+            }
+        }
+
+        // Update last voted cycle
+        accountLastVotedCycle[voter] = currentCycle;
+    }
 
     /// @notice Validates vote points distribution
     /// @dev Checks if points array is valid according to basis points rules

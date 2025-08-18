@@ -50,10 +50,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @dev voter => cycle number
     mapping(address => uint256) public accountLastVotedCycle;
 
-    /// @notice Vote distribution across projects for each cycle
-    /// @dev cycle => array of weighted votes per project
-    mapping(uint256 => uint256[]) public projectDistributions;
-
     /// @notice Total voting power used in each cycle
     /// @dev cycle => total voting power
     mapping(uint256 => uint256) public totalCycleVotingPower;
@@ -125,14 +121,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @return The total voting power from all strategies
     function getVotingPower(address account) external view virtual returns (uint256) {
         return _calculateTotalVotingPower(account);
-    }
-
-    /// @notice Gets the current voting distribution for the active cycle
-    /// @dev Returns the array of weighted votes for each project in the current cycle
-    /// @return Array of vote weights for each project
-    function getCurrentVotingDistribution() external view virtual returns (uint256[] memory) {
-        uint256 currentCycle = cycleModule.getCurrentCycle();
-        return projectDistributions[currentCycle];
     }
 
     /// @notice Returns the EIP-712 domain separator for signature verification
@@ -226,14 +214,6 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
         return totalCycleVotingPower[cycle];
     }
 
-    /// @notice Gets the vote distribution for a specific cycle
-    /// @dev Returns the weighted vote totals for each recipient
-    /// @param cycle The cycle number to check
-    /// @return Array of weighted vote totals for each recipient
-    function getProjectDistributions(uint256 cycle) external view returns (uint256[] memory) {
-        return projectDistributions[cycle];
-    }
-
     // ============ Internal Functions ============
 
     /// @notice Processes a single vote with signature verification
@@ -289,48 +269,8 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @param voter Address of the voter
     /// @param points Array of points allocated to each recipient
     /// @param votingPower Total voting power of the voter
-    function _processVote(address voter, uint256[] calldata points, uint256 votingPower) internal virtual {
-        uint256 currentCycle = cycleModule.getCurrentCycle();
-
-        // Check if voter has already voted in this cycle and revert their previous vote
-        uint256 previousVotingPower = voterCyclePower[currentCycle][voter];
-        if (previousVotingPower > 0) {
-            // Revert previous vote's impact on total voting power
-            totalCycleVotingPower[currentCycle] -= previousVotingPower;
-
-            // Revert previous vote's impact on project distributions
-            uint256[] storage previousPoints = voterCyclePoints[currentCycle][voter];
-            for (uint256 i = 0; i < previousPoints.length; i++) {
-                uint256 previousAllocation = (previousVotingPower * previousPoints[i]) / PRECISION;
-                projectDistributions[currentCycle][i] -= previousAllocation;
-            }
-        }
-
-        // Apply new vote
-        totalCycleVotingPower[currentCycle] += votingPower;
-
-        // Store voter's current voting power and points for potential future recasting
-        voterCyclePower[currentCycle][voter] = votingPower;
-        delete voterCyclePoints[currentCycle][voter]; // Clear previous points array
-        for (uint256 i = 0; i < points.length; i++) {
-            voterCyclePoints[currentCycle][voter].push(points[i]);
-        }
-
-        // Calculate and update project distributions with new vote
-        for (uint256 i = 0; i < points.length; i++) {
-            uint256 allocation = (votingPower * points[i]) / PRECISION;
-
-            // Update project distributions
-            if (i >= projectDistributions[currentCycle].length) {
-                projectDistributions[currentCycle].push(allocation);
-            } else {
-                projectDistributions[currentCycle][i] += allocation;
-            }
-        }
-
-        // Update last voted cycle
-        accountLastVotedCycle[voter] = currentCycle;
-    }
+    function _processVote(address voter, uint256[] calldata points, uint256 votingPower) internal virtual;
+    // Note: This is now an abstract function that must be implemented by concrete modules
 
     /// @notice Validates vote points distribution
     /// @dev Checks if points array is valid according to module rules
