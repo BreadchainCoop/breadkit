@@ -10,10 +10,4 @@ interface IVotingPowerStrategy {
     /// @param account The address to check voting power for
     /// @return The current voting power of the account
     function getCurrentVotingPower(address account) external view returns (uint256);
-
-    /// @notice Gets the accumulated voting power of an account
-    /// @dev Returns the total accumulated voting power an account has earned
-    /// @param account The address to check accumulated voting power for
-    /// @return The accumulated voting power of the account
-    function getAccumulatedVotingPower(address account) external view returns (uint256);
 }

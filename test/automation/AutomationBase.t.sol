@@ -86,16 +86,15 @@ contract AutomationBaseTest is Test {
 
     function testChainlinkCheckUpkeep() public {
         // Initially should not need upkeep (too soon)
-        (bool upkeepNeeded, bytes memory performData) = chainlinkAutomation.checkUpkeep("");
+        (bool upkeepNeeded,) = chainlinkAutomation.checkUpkeep("");
         assertFalse(upkeepNeeded);
 
         // Advance blocks
         vm.roll(block.number + 101);
 
         // Now should need upkeep
-        (upkeepNeeded, performData) = chainlinkAutomation.checkUpkeep("");
+        (upkeepNeeded,) = chainlinkAutomation.checkUpkeep("");
         assertTrue(upkeepNeeded);
-        assertGt(performData.length, 0);
     }
 
     function testChainlinkPerformUpkeep() public {

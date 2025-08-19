@@ -4,79 +4,109 @@ pragma solidity ^0.8.20;
 import {IVotingPowerStrategy} from "./IVotingPowerStrategy.sol";
 
 /// @title IVotingModule
-/// @notice Interface for the voting module that manages project voting with signature-based voting
-/// @dev This module is responsible for handling voting on projects and tracking voting power
+/// @author BreadKit
+/// @notice Interface for voting modules with signature-based voting
+/// @dev Defines the standard interface for all voting module implementations
 interface IVotingModule {
-    /// @notice Submits a vote with points for each project
-    /// @dev This function records a user's vote with points for each project
-    /// @param points Array of points allocated to each project
-    function vote(uint256[] calldata points) external;
+    // ============ Errors ============
 
-    /// @notice Submits a vote with points and applies multipliers
-    /// @dev This function records a user's vote with points and applies specified multipliers
-    /// @param points Array of points allocated to each project
-    /// @param multiplierIndices Array of indices for multipliers to apply
-    function voteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices) external;
+    /// @notice Thrown when an invalid signature is provided
+    error InvalidSignature();
 
-    /// @notice Delegates voting power to another address
-    /// @dev This function allows a user to delegate their voting power to another address
-    /// @param delegatee The address to delegate voting power to
-    function delegate(address delegatee) external;
+    /// @notice Thrown when a nonce has already been used
+    error NonceAlreadyUsed();
 
-    /// @notice Gets the current voting power of an account
-    /// @dev Returns the total voting power an account currently has
+    /// @notice Thrown when points distribution is invalid
+    error InvalidPointsDistribution();
+
+    /// @notice Thrown when points exceed the maximum allowed
+    error ExceedsMaxPoints();
+
+    /// @notice Thrown when zero vote points are submitted
+    error ZeroVotePoints();
+
+    /// @notice Thrown when array lengths don't match in batch operations
+    error ArrayLengthMismatch();
+
+    /// @notice Thrown when batch size exceeds maximum allowed
+    error BatchTooLarge();
+
+    /// @notice Thrown when no strategies are provided during initialization
+    error NoStrategiesProvided();
+
+    /// @notice Thrown when an invalid strategy address is provided
+    error InvalidStrategy();
+
+    /// @notice Thrown when the number of recipients doesn't match expected
+    error IncorrectNumberOfRecipients();
+
+    /// @notice Thrown when recipient registry is not set
+    error RecipientRegistryNotSet();
+
+    // ============ Events ============
+
+    /// @notice Emitted when a vote is cast with a signature
+    /// @param voter The address of the voter
+    /// @param points Array of points allocated to each recipient
+    /// @param votingPower The total voting power used
+    /// @param nonce The nonce used for replay protection
+    /// @param signature The EIP-712 signature
+    event VoteCast(address indexed voter, uint256[] points, uint256 votingPower, uint256 nonce, bytes signature);
+
+    /// @notice Emitted when multiple votes are cast in a batch
+    /// @param voters Array of voter addresses
+    /// @param nonces Array of nonces used
+    event BatchVotesCast(address[] voters, uint256[] nonces);
+
+    /// @notice Emitted when the voting module is initialized
+    /// @param strategies Array of voting power strategies
+    event VotingModuleInitialized(IVotingPowerStrategy[] strategies);
+
+    /// @notice Emitted when the distribution module is set
+    /// @param distributionModule Address of the distribution module
+    event DistributionModuleSet(address distributionModule);
+
+    /// @notice Emitted when the recipient registry is set
+    /// @param recipientRegistry Address of the recipient registry
+    event RecipientRegistrySet(address recipientRegistry);
+
+    /// @notice Emitted when the cycle module is set
+    /// @param cycleModule Address of the cycle module
+    event CycleModuleSet(address cycleModule);
+
+    /// @notice Emitted when max points is updated
+    /// @param maxPoints New maximum points value
+    event MaxPointsSet(uint256 maxPoints);
+
+    // ============ External Functions ============
+
+    /// @notice Gets the voting power of an account
+    /// @dev Queries the configured voting strategies for the account's power
     /// @param account The address to check voting power for
-    /// @return The current voting power of the account
+    /// @return The total voting power from all strategies
     function getVotingPower(address account) external view returns (uint256);
 
-    /// @notice Casts a vote with points for each project
-    /// @dev This function is an alias for vote() and records a user's vote with points
-    /// @param points Array of points allocated to each project
-    function castVote(uint256[] calldata points) external;
-
-    /// @notice Casts a vote with points and applies multipliers
-    /// @dev This function is an alias for voteWithMultipliers() and records a user's vote with points and multipliers
-    /// @param points Array of points allocated to each project
-    /// @param multiplierIndices Array of indices for multipliers to apply
-    function castVoteWithMultipliers(uint256[] calldata points, uint256[] calldata multiplierIndices) external;
-
-    /// @notice Gets the current distribution of votes across projects
-    /// @dev Returns the current voting distribution showing how votes are allocated
-    /// @return An array representing the current distribution of votes
+    /// @notice Gets the current voting distribution for the active cycle
+    /// @dev Returns the array of weighted votes for each project in the current cycle
+    /// @return Array of vote weights for each project
     function getCurrentVotingDistribution() external view returns (uint256[] memory);
 
-    /// @notice Sets the maximum number of points that can be allocated
-    /// @dev This determines the maximum number of points a user can allocate in a vote
-    /// @param maxPoints The maximum number of points allowed
-    function setMaxPoints(uint256 maxPoints) external;
+    /// @notice Returns the EIP-712 domain separator for signature verification
+    /// @dev Used by external contracts to verify signatures
+    /// @return The domain separator hash
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
 
-    /// @notice Casts a vote with a signature
-    /// @dev Allows off-chain vote preparation with on-chain submission using EIP-712 signatures
-    /// @param voter The address of the voter
-    /// @param points Array of points allocated to each project
-    /// @param nonce The nonce for replay protection
-    /// @param signature The EIP-712 signature
-    function castVoteWithSignature(address voter, uint256[] calldata points, uint256 nonce, bytes calldata signature)
-        external;
+    /// @notice Checks if a nonce has been used for a voter
+    /// @dev Used to prevent replay attacks
+    /// @param voter The voter's address
+    /// @param nonce The nonce to check
+    /// @return True if the nonce has been used, false otherwise
+    function isNonceUsed(address voter, uint256 nonce) external view returns (bool);
 
-    /// @notice Casts multiple votes with signatures in a single transaction
-    /// @dev Batch operation for efficient vote submission
-    /// @param voters Array of voter addresses
-    /// @param points Array of points arrays for each voter
-    /// @param nonces Array of nonces for each voter
-    /// @param signatures Array of signatures for each voter
-    function castBatchVotesWithSignature(
-        address[] calldata voters,
-        uint256[][] calldata points,
-        uint256[] calldata nonces,
-        bytes[] calldata signatures
-    ) external;
-
-    /// @notice Validates vote points distribution
-    /// @dev Checks if the points distribution is valid according to module rules
-    /// @param points Array of points to validate
-    /// @return True if points are valid, false otherwise
-    function validateVotePoints(uint256[] calldata points) external view returns (bool);
+    /// @notice Gets all configured voting power strategies
+    /// @dev Returns the array of strategy contracts
+    /// @return Array of voting power strategy contracts
+    function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
 
     /// @notice Validates a vote signature
     /// @dev Verifies that a signature is valid for the given vote parameters
@@ -89,21 +119,4 @@ interface IVotingModule {
         external
         view
         returns (bool);
-
-    /// @notice Returns the EIP-712 domain separator
-    /// @dev Used for signature verification
-    /// @return The domain separator hash
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-
-    /// @notice Checks if a nonce has been used for a voter
-    /// @dev Used to prevent replay attacks
-    /// @param voter The voter's address
-    /// @param nonce The nonce to check
-    /// @return True if the nonce has been used, false otherwise
-    function isNonceUsed(address voter, uint256 nonce) external view returns (bool);
-
-    /// @notice Gets all voting power strategies
-    /// @dev Returns the array of configured voting power strategies
-    /// @return Array of voting power strategy contracts
-    function getVotingPowerStrategies() external view returns (IVotingPowerStrategy[] memory);
 }
