@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IVotingModule} from "../interfaces/IVotingModule.sol";
 import {IVotingPowerStrategy} from "../interfaces/IVotingPowerStrategy.sol";
-import {IMockRecipientRegistry} from "../interfaces/IMockRecipientRegistry.sol";
+import {IRecipientRegistry} from "../interfaces/IRecipientRegistry.sol";
 import {IDistributionModule} from "../interfaces/IDistributionModule.sol";
 import {ICycleModule} from "../interfaces/ICycleModule.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
@@ -70,7 +70,7 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
 
     /// @notice Reference to the recipient registry for validation
     /// @dev Maintains the list of valid recipients that can receive votes
-    IMockRecipientRegistry public recipientRegistry;
+    IRecipientRegistry public recipientRegistry;
 
     /// @notice Reference to the cycle module for cycle management
     /// @dev Manages voting cycles and transitions between periods
@@ -99,7 +99,7 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
         __Ownable_init(msg.sender);
 
         distributionModule = IDistributionModule(_distributionModule);
-        recipientRegistry = IMockRecipientRegistry(_recipientRegistry);
+        recipientRegistry = IRecipientRegistry(_recipientRegistry);
         cycleModule = ICycleModule(_cycleModule);
 
         for (uint256 i = 0; i < _strategies.length; i++) {
@@ -151,7 +151,7 @@ abstract contract AbstractVotingModule is IVotingModule, Initializable, EIP712Up
     /// @return The number of active recipients
     function getExpectedPointsLength() external view returns (uint256) {
         if (address(recipientRegistry) == address(0)) revert RecipientRegistryNotSet();
-        return recipientRegistry.getActiveRecipientsCount();
+        return recipientRegistry.getRecipientCount();
     }
 
     // ============ Getter Functions ============

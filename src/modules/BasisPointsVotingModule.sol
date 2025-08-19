@@ -184,7 +184,7 @@ contract BasisPointsVotingModule is AbstractVotingModule {
         if (points.length == 0) return false;
 
         // Validate array length against recipient registry
-        uint256 recipientCount = recipientRegistry.getActiveRecipientsCount();
+        uint256 recipientCount = recipientRegistry.getRecipientCount();
         if (points.length != recipientCount) return false;
 
         uint256 totalPoints;
