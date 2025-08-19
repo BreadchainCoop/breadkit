@@ -2,15 +2,15 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/modules/automation/MockDistributionManager.sol";
+import "./mocks/MockDistributionManagerSimple.sol";
 
 contract MockDistributionManagerTest is Test {
-    MockDistributionManager public manager;
+    MockDistributionManagerSimple public manager;
 
     event MockDistributionExecuted(uint256 blockNumber);
 
     function setUp() public {
-        manager = new MockDistributionManager();
+        manager = new MockDistributionManagerSimple();
     }
 
     function test_InitialState() public view {

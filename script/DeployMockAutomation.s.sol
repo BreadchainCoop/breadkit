@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/modules/automation/MockDistributionManager.sol";
+import "../test/mocks/MockDistributionManagerSimple.sol";
 import "../src/modules/automation/ChainlinkAutomation.sol";
 
 /// @title DeployMockAutomation
@@ -12,12 +12,12 @@ contract DeployMockAutomation is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy MockDistributionManager
-        MockDistributionManager mockDM = new MockDistributionManager();
-        console.log("MockDistributionManager deployed at:", address(mockDM));
+        // Deploy MockDistributionManagerSimple
+        MockDistributionManagerSimple mockDM = new MockDistributionManagerSimple();
+        console.log("MockDistributionManagerSimple deployed at:", address(mockDM));
         console.log("Will trigger every 200 blocks");
 
-        // Deploy ChainlinkAutomation with MockDistributionManager
+        // Deploy ChainlinkAutomation with MockDistributionManagerSimple
         ChainlinkAutomation chainlink = new ChainlinkAutomation(address(mockDM));
         console.log("ChainlinkAutomation deployed at:", address(chainlink));
 
@@ -33,12 +33,12 @@ contract DeployMockAutomation is Script {
     }
 
     /// @notice Deploy only the mock distribution manager
-    function deployMockDistributionManager() external returns (address) {
+    function deployMockDistributionManagerSimple() external returns (address) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        MockDistributionManager mockDM = new MockDistributionManager();
-        console.log("MockDistributionManager deployed at:", address(mockDM));
+        MockDistributionManagerSimple mockDM = new MockDistributionManagerSimple();
+        console.log("MockDistributionManagerSimple deployed at:", address(mockDM));
 
         vm.stopBroadcast();
 
