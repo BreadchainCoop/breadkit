@@ -27,10 +27,7 @@ interface IAutomationPaymentProvider {
     /// @param amount Amount paid
     /// @param yieldAmount Total yield amount before payment
     event AutomationPaymentMade(
-        address indexed provider,
-        address indexed receiver,
-        uint256 amount,
-        uint256 yieldAmount
+        address indexed provider, address indexed receiver, uint256 amount, uint256 yieldAmount
     );
 
     /// @notice Emitted when payment configuration is updated
@@ -55,10 +52,7 @@ interface IAutomationPaymentProvider {
     /// @param yieldAmount The total yield available
     /// @return sufficient Whether the yield is sufficient to cover costs
     /// @return requiredAmount The minimum amount needed (including fees)
-    function hasSufficientYield(uint256 yieldAmount)
-        external
-        view
-        returns (bool sufficient, uint256 requiredAmount);
+    function hasSufficientYield(uint256 yieldAmount) external view returns (bool sufficient, uint256 requiredAmount);
 
     /// @notice Updates the payment configuration
     /// @dev Only callable by authorized admin

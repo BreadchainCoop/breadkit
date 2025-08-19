@@ -23,11 +23,9 @@ abstract contract AutomationProviderBase is IDistributionManager, IAutomationPay
     error InvalidPaymentConfig();
     error PaymentProcessingFailed();
 
-    constructor(
-        address _distributionManager,
-        address _paymentToken,
-        PaymentConfig memory _initialConfig
-    ) Ownable(msg.sender) {
+    constructor(address _distributionManager, address _paymentToken, PaymentConfig memory _initialConfig)
+        Ownable(msg.sender)
+    {
         require(_distributionManager != address(0), "Invalid distribution manager");
         require(_paymentToken != address(0), "Invalid payment token");
         distributionManager = IDistributionManager(_distributionManager);
@@ -140,13 +138,8 @@ abstract contract AutomationProviderBase is IDistributionManager, IAutomationPay
         if (paymentAmount > 0 && paymentConfig.paymentReceiver != address(0)) {
             // Transfer payment from caller (EnhancedDistributionManager)
             paymentToken.safeTransferFrom(msg.sender, paymentConfig.paymentReceiver, paymentAmount);
-            
-            emit AutomationPaymentMade(
-                address(this),
-                paymentConfig.paymentReceiver,
-                paymentAmount,
-                yieldAmount
-            );
+
+            emit AutomationPaymentMade(address(this), paymentConfig.paymentReceiver, paymentAmount, yieldAmount);
         }
 
         return paymentAmount;
@@ -158,7 +151,7 @@ abstract contract AutomationProviderBase is IDistributionManager, IAutomationPay
             if (config.paymentReceiver == address(0)) revert InvalidPaymentConfig();
             if (config.percentageFee > 10000) revert InvalidPaymentConfig(); // Max 100%
         }
-        
+
         paymentConfig = config;
         emit PaymentConfigUpdated(address(this), config);
     }

@@ -9,7 +9,6 @@ import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/autom
 /// @notice Chainlink Keeper compatible automation with payment support
 /// @dev Implements Chainlink automation interface with integrated payment handling
 contract ChainlinkAutomationWithPayment is AutomationProviderBase, AutomationCompatibleInterface {
-    
     /// @notice Constructor
     /// @param _distributionManager Address of the distribution manager
     /// @param _paymentToken Address of the payment token (yield token)
@@ -24,18 +23,20 @@ contract ChainlinkAutomationWithPayment is AutomationProviderBase, AutomationCom
         uint256 _fixedFee,
         uint256 _percentageFee,
         uint256 _minYieldThreshold
-    ) AutomationProviderBase(
-        _distributionManager,
-        _paymentToken,
-        PaymentConfig({
-            requiresPayment: true,
-            fixedFee: _fixedFee,
-            percentageFee: _percentageFee,
-            minYieldThreshold: _minYieldThreshold,
-            paymentReceiver: _paymentReceiver,
-            maxFeeCap: 0 // Can be set later if needed
-        })
-    ) {}
+    )
+        AutomationProviderBase(
+            _distributionManager,
+            _paymentToken,
+            PaymentConfig({
+                requiresPayment: true,
+                fixedFee: _fixedFee,
+                percentageFee: _percentageFee,
+                minYieldThreshold: _minYieldThreshold,
+                paymentReceiver: _paymentReceiver,
+                maxFeeCap: 0 // Can be set later if needed
+            })
+        )
+    {}
 
     /// @notice Chainlink-compatible upkeep check
     /// @dev Called by Chainlink nodes to check if work needs to be performed
@@ -63,21 +64,14 @@ contract ChainlinkAutomationWithPayment is AutomationProviderBase, AutomationCom
     /// @return ready Whether upkeep is needed
     /// @return reason Reason if not ready
     /// @return estimatedPayment Estimated payment for this execution
-    function getUpkeepInfo()
-        external
-        view
-        returns (
-            bool ready,
-            string memory reason,
-            uint256 estimatedPayment
-        )
-    {
+    function getUpkeepInfo() external view returns (bool ready, string memory reason, uint256 estimatedPayment) {
         ready = isDistributionReady();
-        
+
         if (!ready) {
             // Try to get reason from distribution manager if it has enhanced version
-            try EnhancedDistributionManager(address(distributionManager)).getDistributionReadiness() 
-                returns (bool, string memory r, uint256, uint256) {
+            try EnhancedDistributionManager(address(distributionManager)).getDistributionReadiness() returns (
+                bool, string memory r, uint256, uint256
+            ) {
                 reason = r;
             } catch {
                 reason = "Distribution not ready";

@@ -29,10 +29,7 @@ contract EnhancedDistributionManager is IDistributionManager, Ownable {
     bool public automationPaymentEnabled = true;
 
     event DistributionExecuted(
-        uint256 blockNumber,
-        uint256 totalYield,
-        uint256 automationPayment,
-        uint256 distributedYield
+        uint256 blockNumber, uint256 totalYield, uint256 automationPayment, uint256 distributedYield
     );
     event AutomationProviderUpdated(address indexed oldProvider, address indexed newProvider);
     event AutomationPaymentToggled(bool enabled);
@@ -74,7 +71,7 @@ contract EnhancedDistributionManager is IDistributionManager, Ownable {
 
         // Get available yield
         uint256 availableYield = yieldModule.yieldAccrued();
-        
+
         // Check minimum yield requirement
         if (availableYield < minYieldRequired) return false;
 
@@ -137,12 +134,7 @@ contract EnhancedDistributionManager is IDistributionManager, Ownable {
         distributionModule.distributeYield();
 
         // Emit event
-        emit DistributionExecuted(
-            block.number,
-            availableYield,
-            automationPayment,
-            yieldForDistribution
-        );
+        emit DistributionExecuted(block.number, availableYield, automationPayment, yieldForDistribution);
     }
 
     /// @notice Sets the automation provider
@@ -195,12 +187,7 @@ contract EnhancedDistributionManager is IDistributionManager, Ownable {
     function getDistributionReadiness()
         external
         view
-        returns (
-            bool ready,
-            string memory reason,
-            uint256 availableYield,
-            uint256 requiredYield
-        )
+        returns (bool ready, string memory reason, uint256 availableYield, uint256 requiredYield)
     {
         ready = true;
         availableYield = yieldModule.yieldAccrued();
@@ -242,12 +229,7 @@ contract EnhancedDistributionManager is IDistributionManager, Ownable {
     function getCycleInfo()
         external
         view
-        returns (
-            uint256 cycleNumber,
-            uint256 startBlock,
-            uint256 endBlock,
-            uint256 blocksRemaining
-        )
+        returns (uint256 cycleNumber, uint256 startBlock, uint256 endBlock, uint256 blocksRemaining)
     {
         cycleNumber = currentCycleNumber;
         startBlock = lastDistributionBlock;

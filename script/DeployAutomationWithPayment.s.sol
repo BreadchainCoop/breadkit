@@ -9,14 +9,14 @@ import "../src/modules/automation/GelatoAutomationWithPayment.sol";
 contract DeployAutomationWithPayment is Script {
     // Configuration parameters
     uint256 constant CYCLE_LENGTH = 7200; // ~1 day on Ethereum (12s blocks)
-    uint256 constant MIN_YIELD_REQUIRED = 100 * 10**18; // 100 tokens minimum
-    
+    uint256 constant MIN_YIELD_REQUIRED = 100 * 10 ** 18; // 100 tokens minimum
+
     // Chainlink configuration
-    uint256 constant CHAINLINK_FIXED_FEE = 5 * 10**18; // 5 tokens
+    uint256 constant CHAINLINK_FIXED_FEE = 5 * 10 ** 18; // 5 tokens
     uint256 constant CHAINLINK_PERCENTAGE_FEE = 200; // 2%
-    
+
     // Gelato configuration
-    uint256 constant GELATO_FIXED_FEE = 3 * 10**18; // 3 tokens
+    uint256 constant GELATO_FIXED_FEE = 3 * 10 ** 18; // 3 tokens
     uint256 constant GELATO_PERCENTAGE_FEE = 300; // 3%
 
     function run() external {
@@ -32,11 +32,7 @@ contract DeployAutomationWithPayment is Script {
 
         // Deploy Enhanced Distribution Manager
         EnhancedDistributionManager distributionManager = new EnhancedDistributionManager(
-            distributionModule,
-            yieldModule,
-            yieldToken,
-            CYCLE_LENGTH,
-            MIN_YIELD_REQUIRED
+            distributionModule, yieldModule, yieldToken, CYCLE_LENGTH, MIN_YIELD_REQUIRED
         );
 
         console.log("Enhanced Distribution Manager deployed at:", address(distributionManager));
@@ -78,10 +74,10 @@ contract DeployAutomationWithPayment is Script {
         console.log("Gelato Automation:", address(gelatoAutomation));
         console.log("\n=== Configuration ===");
         console.log("Cycle Length (blocks):", CYCLE_LENGTH);
-        console.log("Min Yield Required (tokens):", MIN_YIELD_REQUIRED / 10**18);
-        console.log("Chainlink Fixed Fee (tokens):", CHAINLINK_FIXED_FEE / 10**18);
+        console.log("Min Yield Required (tokens):", MIN_YIELD_REQUIRED / 10 ** 18);
+        console.log("Chainlink Fixed Fee (tokens):", CHAINLINK_FIXED_FEE / 10 ** 18);
         console.log("Chainlink Percentage Fee (%):", CHAINLINK_PERCENTAGE_FEE / 100);
-        console.log("Gelato Fixed Fee (tokens):", GELATO_FIXED_FEE / 10**18);
+        console.log("Gelato Fixed Fee (tokens):", GELATO_FIXED_FEE / 10 ** 18);
         console.log("Gelato Percentage Fee (%):", GELATO_PERCENTAGE_FEE / 100);
     }
 

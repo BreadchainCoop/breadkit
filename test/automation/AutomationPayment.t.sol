@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 // Mock implementations for testing
 contract MockYieldToken is ERC20 {
     constructor() ERC20("Mock Yield", "MYT") {
-        _mint(msg.sender, 1000000 * 10**18);
+        _mint(msg.sender, 1000000 * 10 ** 18);
     }
 
     function mint(address to, uint256 amount) external {
@@ -56,7 +56,7 @@ contract MockDistributionModule is IDistributionModule {
     bool public isPaused;
     uint256 public receivedYield;
     IERC20 public yieldToken;
-    
+
     function setYieldToken(address _token) external {
         yieldToken = IERC20(_token);
     }
@@ -120,22 +120,16 @@ contract AutomationPaymentTest is Test {
     address public keeper = address(0x9999);
 
     uint256 constant CYCLE_LENGTH = 100;
-    uint256 constant MIN_YIELD = 1000 * 10**18;
-    uint256 constant FIXED_FEE = 50 * 10**18;
+    uint256 constant MIN_YIELD = 1000 * 10 ** 18;
+    uint256 constant FIXED_FEE = 50 * 10 ** 18;
     uint256 constant PERCENTAGE_FEE = 500; // 5%
 
     event AutomationPaymentMade(
-        address indexed provider,
-        address indexed receiver,
-        uint256 amount,
-        uint256 yieldAmount
+        address indexed provider, address indexed receiver, uint256 amount, uint256 yieldAmount
     );
 
     event DistributionExecuted(
-        uint256 blockNumber,
-        uint256 totalYield,
-        uint256 automationPayment,
-        uint256 distributedYield
+        uint256 blockNumber, uint256 totalYield, uint256 automationPayment, uint256 distributedYield
     );
 
     function setUp() public {
@@ -147,11 +141,7 @@ contract AutomationPaymentTest is Test {
 
         // Deploy enhanced distribution manager
         distributionManager = new EnhancedDistributionManager(
-            address(distributionModule),
-            address(yieldModule),
-            address(yieldToken),
-            CYCLE_LENGTH,
-            MIN_YIELD
+            address(distributionModule), address(yieldModule), address(yieldToken), CYCLE_LENGTH, MIN_YIELD
         );
 
         // Deploy Chainlink automation with payment
@@ -179,10 +169,10 @@ contract AutomationPaymentTest is Test {
     }
 
     function testPaymentCalculation() public view {
-        uint256 yieldAmount = 2000 * 10**18;
-        
+        uint256 yieldAmount = 2000 * 10 ** 18;
+
         (uint256 payment, uint256 remaining) = chainlinkAutomation.calculatePayment(yieldAmount);
-        
+
         // Fixed fee + 5% of yield
         uint256 expectedPayment = FIXED_FEE + (yieldAmount * PERCENTAGE_FEE / 10000);
         assertEq(payment, expectedPayment);
@@ -191,21 +181,21 @@ contract AutomationPaymentTest is Test {
 
     function testSufficientYieldCheck() public view {
         // Test with insufficient yield
-        uint256 insufficientYield = 500 * 10**18;
+        uint256 insufficientYield = 500 * 10 ** 18;
         (bool sufficient, uint256 required) = chainlinkAutomation.hasSufficientYield(insufficientYield);
         assertFalse(sufficient);
         assertEq(required, MIN_YIELD + FIXED_FEE);
 
         // Test with sufficient yield
-        uint256 sufficientYield = 2000 * 10**18;
+        uint256 sufficientYield = 2000 * 10 ** 18;
         (sufficient, required) = chainlinkAutomation.hasSufficientYield(sufficientYield);
         assertTrue(sufficient);
     }
 
     function testDistributionWithInsufficientYield() public {
         // Set yield below threshold
-        yieldModule.setYieldAccrued(500 * 10**18);
-        
+        yieldModule.setYieldAccrued(500 * 10 ** 18);
+
         // Advance blocks
         vm.roll(block.number + CYCLE_LENGTH + 1);
 
@@ -220,7 +210,7 @@ contract AutomationPaymentTest is Test {
 
     function testSuccessfulDistributionWithPayment() public {
         // Set sufficient yield
-        uint256 totalYield = 2000 * 10**18;
+        uint256 totalYield = 2000 * 10 ** 18;
         yieldModule.setYieldAccrued(totalYield);
 
         // Advance blocks
@@ -255,7 +245,7 @@ contract AutomationPaymentTest is Test {
         distributionManager.setAutomationProvider(address(gelatoAutomation));
 
         // Set sufficient yield
-        uint256 totalYield = 2000 * 10**18;
+        uint256 totalYield = 2000 * 10 ** 18;
         yieldModule.setYieldAccrued(totalYield);
 
         // Advance blocks
@@ -280,10 +270,10 @@ contract AutomationPaymentTest is Test {
         chainlinkAutomation.setPaymentRequired(false);
 
         // Also need to lower the minimum yield requirement in distribution manager
-        distributionManager.setMinYieldRequired(500 * 10**18);
+        distributionManager.setMinYieldRequired(500 * 10 ** 18);
 
         // Set yield (can be lower now)
-        uint256 totalYield = 800 * 10**18;
+        uint256 totalYield = 800 * 10 ** 18;
         yieldModule.setYieldAccrued(totalYield);
 
         // Advance blocks
@@ -308,51 +298,51 @@ contract AutomationPaymentTest is Test {
         // Update payment configuration
         IAutomationPaymentProvider.PaymentConfig memory newConfig = IAutomationPaymentProvider.PaymentConfig({
             requiresPayment: true,
-            fixedFee: 100 * 10**18,
+            fixedFee: 100 * 10 ** 18,
             percentageFee: 1000, // 10%
-            minYieldThreshold: 1500 * 10**18,
+            minYieldThreshold: 1500 * 10 ** 18,
             paymentReceiver: address(0xABCD),
-            maxFeeCap: 200 * 10**18
+            maxFeeCap: 200 * 10 ** 18
         });
 
         chainlinkAutomation.updatePaymentConfig(newConfig);
 
         // Verify new config
         IAutomationPaymentProvider.PaymentConfig memory config = chainlinkAutomation.getPaymentConfig();
-        assertEq(config.fixedFee, 100 * 10**18);
+        assertEq(config.fixedFee, 100 * 10 ** 18);
         assertEq(config.percentageFee, 1000);
-        assertEq(config.maxFeeCap, 200 * 10**18);
+        assertEq(config.maxFeeCap, 200 * 10 ** 18);
     }
 
     function testMaxFeeCap() public {
         // Set a max fee cap
         IAutomationPaymentProvider.PaymentConfig memory config = chainlinkAutomation.getPaymentConfig();
-        config.maxFeeCap = 100 * 10**18;
+        config.maxFeeCap = 100 * 10 ** 18;
         chainlinkAutomation.updatePaymentConfig(config);
 
         // Calculate payment with large yield
-        uint256 largeYield = 10000 * 10**18;
+        uint256 largeYield = 10000 * 10 ** 18;
         (uint256 payment,) = chainlinkAutomation.calculatePayment(largeYield);
 
         // Payment should be capped
-        assertEq(payment, 100 * 10**18);
+        assertEq(payment, 100 * 10 ** 18);
     }
 
     function testDistributionReadinessInfo() public {
         // Set yield below threshold
-        yieldModule.setYieldAccrued(500 * 10**18);
+        yieldModule.setYieldAccrued(500 * 10 ** 18);
 
-        (bool ready, string memory reason, uint256 available, uint256 required) = 
+        (bool ready, string memory reason, uint256 available, uint256 required) =
             distributionManager.getDistributionReadiness();
 
         assertFalse(ready);
-        assertEq(available, 500 * 10**18);
+        assertEq(available, 500 * 10 ** 18);
         assertTrue(required >= MIN_YIELD);
         assertTrue(bytes(reason).length > 0);
     }
 
     function testCycleInfo() public {
-        (uint256 cycleNumber, uint256 startBlock, uint256 endBlock, uint256 blocksRemaining) = 
+        (uint256 cycleNumber, uint256 startBlock, uint256 endBlock, uint256 blocksRemaining) =
             distributionManager.getCycleInfo();
 
         assertEq(cycleNumber, 1);
@@ -361,7 +351,7 @@ contract AutomationPaymentTest is Test {
         assertEq(blocksRemaining, CYCLE_LENGTH);
 
         // Advance and execute
-        yieldModule.setYieldAccrued(2000 * 10**18);
+        yieldModule.setYieldAccrued(2000 * 10 ** 18);
         vm.roll(block.number + CYCLE_LENGTH + 1);
         chainlinkAutomation.executeDistribution();
 
@@ -372,7 +362,7 @@ contract AutomationPaymentTest is Test {
 
     function testEmergencyPause() public {
         // Set up valid distribution conditions
-        yieldModule.setYieldAccrued(2000 * 10**18);
+        yieldModule.setYieldAccrued(2000 * 10 ** 18);
         vm.roll(block.number + CYCLE_LENGTH + 1);
 
         // Pause the system
@@ -396,21 +386,21 @@ contract AutomationPaymentTest is Test {
             address(distributionManager),
             address(yieldToken),
             address(0xC5704),
-            25 * 10**18, // Lower fixed fee
+            25 * 10 ** 18, // Lower fixed fee
             1000, // Higher percentage (10%)
-            800 * 10**18 // Lower threshold
+            800 * 10 ** 18 // Lower threshold
         );
 
         // Compare payment calculations
-        uint256 yieldAmount = 2000 * 10**18;
-        
+        uint256 yieldAmount = 2000 * 10 ** 18;
+
         (uint256 chainlinkPayment,) = chainlinkAutomation.calculatePayment(yieldAmount);
         (uint256 customPayment,) = customProvider.calculatePayment(yieldAmount);
 
         // Chainlink: 50 + (2000 * 5%) = 50 + 100 = 150
-        assertEq(chainlinkPayment, 150 * 10**18);
-        
+        assertEq(chainlinkPayment, 150 * 10 ** 18);
+
         // Custom: 25 + (2000 * 10%) = 25 + 200 = 225
-        assertEq(customPayment, 225 * 10**18);
+        assertEq(customPayment, 225 * 10 ** 18);
     }
 }

@@ -8,7 +8,6 @@ import "../EnhancedDistributionManager.sol";
 /// @notice Gelato Network compatible automation with payment support
 /// @dev Implements Gelato automation interface with integrated payment handling
 contract GelatoAutomationWithPayment is AutomationProviderBase {
-    
     /// @notice Constructor
     /// @param _distributionManager Address of the distribution manager
     /// @param _paymentToken Address of the payment token (yield token)
@@ -23,18 +22,20 @@ contract GelatoAutomationWithPayment is AutomationProviderBase {
         uint256 _fixedFee,
         uint256 _percentageFee,
         uint256 _minYieldThreshold
-    ) AutomationProviderBase(
-        _distributionManager,
-        _paymentToken,
-        PaymentConfig({
-            requiresPayment: true,
-            fixedFee: _fixedFee,
-            percentageFee: _percentageFee,
-            minYieldThreshold: _minYieldThreshold,
-            paymentReceiver: _paymentReceiver,
-            maxFeeCap: 0 // Can be set later if needed
-        })
-    ) {}
+    )
+        AutomationProviderBase(
+            _distributionManager,
+            _paymentToken,
+            PaymentConfig({
+                requiresPayment: true,
+                fixedFee: _fixedFee,
+                percentageFee: _percentageFee,
+                minYieldThreshold: _minYieldThreshold,
+                paymentReceiver: _paymentReceiver,
+                maxFeeCap: 0 // Can be set later if needed
+            })
+        )
+    {}
 
     /// @notice Gelato-compatible resolver function
     /// @dev Called by Gelato executors to check if work needs to be performed
@@ -60,19 +61,15 @@ contract GelatoAutomationWithPayment is AutomationProviderBase {
     function getTaskInfo()
         external
         view
-        returns (
-            bool ready,
-            string memory reason,
-            uint256 estimatedGasUsed,
-            uint256 estimatedPayment
-        )
+        returns (bool ready, string memory reason, uint256 estimatedGasUsed, uint256 estimatedPayment)
     {
         ready = isDistributionReady();
-        
+
         if (!ready) {
             // Try to get reason from distribution manager if it has enhanced version
-            try EnhancedDistributionManager(address(distributionManager)).getDistributionReadiness() 
-                returns (bool, string memory r, uint256, uint256) {
+            try EnhancedDistributionManager(address(distributionManager)).getDistributionReadiness() returns (
+                bool, string memory r, uint256, uint256
+            ) {
                 reason = r;
             } catch {
                 reason = "Distribution not ready";
@@ -99,7 +96,7 @@ contract GelatoAutomationWithPayment is AutomationProviderBase {
         }
 
         // Additional Gelato-specific validations could go here
-        
+
         return (true, "Ready for execution");
     }
 }
