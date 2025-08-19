@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../../src/modules/automation/ChainlinkAutomation.sol";
 // import "../../src/modules/automation/GelatoAutomation.sol";
-import "../../src/mocks/MockDistributionManager.sol";
+import "../mocks/MockDistributionManager.sol";
 import "../../src/interfaces/IDistributionModule.sol";
 
 contract MockDistributionModule is IDistributionModule {
