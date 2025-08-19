@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../interfaces/IDistributionManager.sol";
-import "../interfaces/IDistributionModule.sol";
+import "../../src/interfaces/IDistributionManager.sol";
+import "../../src/interfaces/IDistributionModule.sol";
 
 /// @title MockDistributionManager
 /// @notice Mock implementation of IDistributionManager for testing
