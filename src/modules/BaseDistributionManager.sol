@@ -92,22 +92,22 @@ contract BaseDistributionManager is DistributionManager {
 
         // Transfer tokens to strategy
         baseToken.safeTransfer(strategy, amount);
-        
+
         // Trigger distribution in strategy
         IDistributionStrategy(strategy).distribute(amount);
-        
+
         emit StrategyDistribution(strategy, amount);
     }
 
     /// @notice Distributes yield proportionally to multiple strategies
     /// @param strategyAddresses Array of strategy addresses
     /// @param proportions Array of proportions (must sum to 100)
-    function distributeToMultipleStrategies(
-        address[] calldata strategyAddresses,
-        uint256[] calldata proportions
-    ) external onlyOwner {
+    function distributeToMultipleStrategies(address[] calldata strategyAddresses, uint256[] calldata proportions)
+        external
+        onlyOwner
+    {
         require(strategyAddresses.length == proportions.length, "Length mismatch");
-        
+
         uint256 totalProportion = 0;
         for (uint256 i = 0; i < proportions.length; i++) {
             totalProportion += proportions[i];
@@ -121,7 +121,7 @@ contract BaseDistributionManager is DistributionManager {
         // Distribute to each strategy based on proportions
         for (uint256 i = 0; i < strategyAddresses.length; i++) {
             if (!strategies[strategyAddresses[i]]) revert StrategyNotFound();
-            
+
             uint256 strategyAmount = (availableAmount * proportions[i]) / 100;
             if (strategyAmount > 0) {
                 baseToken.safeTransfer(strategyAddresses[i], strategyAmount);
